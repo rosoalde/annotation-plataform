@@ -38,7 +38,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:8007/api
+      VITE_API_URL: http://backend:8007/api
     volumes:
       - ./frontend:/app
       - /app/node_modules

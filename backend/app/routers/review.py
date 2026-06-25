@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import require_role
@@ -18,7 +19,7 @@ async def pending_review(
     current_user: User = Depends(require_role("reviewer", "judge", "admin")),
 ):
     result = await db.execute(
-        select(Annotation).where(
+        select(Annotation).options(selectinload(Annotation.annotator)).where(
             Annotation.project_id == project_id,
             Annotation.is_correction == True,
             Annotation.reviewer_decision == None,

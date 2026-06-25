@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.security import require_role
@@ -28,8 +29,11 @@ async def judge_records(
 
     out = []
     for rec in records:
-        ann_q = select(Annotation).where(
+        ann_q = (
+            select(Annotation)
+            .options(selectinload(Annotation.annotator)).where(
             Annotation.record_id == rec.id, Annotation.annotation_type.in_(["sentiment", "pillar"])
+            )
         )
         if annotation_type:
             ann_q = ann_q.where(Annotation.annotation_type == annotation_type)
