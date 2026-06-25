@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+    --bg: #0a0b0e;
+    --surface: #111318;
+    --card: #181b22;
+    --border: #252830;
+    --border2: #30343f;
+    --text: #dde1ec;
+    --muted: #6b7080;
+    --accent: #4e7bef;
+    --accent2: #7a9bf5;
+    --green: #2ec27e;
+    --red: #e05252;
+    --amber: #e8962a;
+    --teal: #28bfb0;
+    --purple: #9b72ef;
+    --r: 8px;
+    --r2: 12px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+code,
+kbd,
+pre,
+.mono {
+    font-family: 'IBM Plex Mono', monospace;
+}
+
+::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+}
+
+button {
+    cursor: pointer;
+    font-family: 'IBM Plex Sans', sans-serif;
+}
+
+input,
+textarea,
+select {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    color: var(--text);
+    padding: 8px 11px;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.12s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: var(--accent);
+}
+
+textarea {
+    resize: vertical;
+}
+
+select option {
+    background: var(--card);
+}
