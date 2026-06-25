@@ -6,7 +6,8 @@ import type {
     PendingUser, AppUser, UserRole,
 } from "../types";
 
-const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8007/api";
+//const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8007/api";
+const BASE = "/api";
 
 export const http = axios.create({ baseURL: BASE });
 
