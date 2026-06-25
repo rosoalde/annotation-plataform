@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.core.database import get_db
-from app.core.security import require_role
-from app.models.models import User, Record, Annotation
-from app.schemas.schemas import JudgeRecordOut, JudgeAnnotationOut, JudgeDecideCreate, RecordOut
+from backend.app.core.database import get_db
+from backend.app.core.security import require_role
+from backend.app.models.models import User, Record, Annotation
+from backend.app.schemas.schemas import JudgeRecordOut, JudgeAnnotationOut, JudgeDecideCreate, RecordOut
 
 router = APIRouter(tags=["judge"])
 
@@ -31,8 +31,10 @@ async def judge_records(
     for rec in records:
         ann_q = (
             select(Annotation)
-            .options(selectinload(Annotation.annotator)).where(
-            Annotation.record_id == rec.id, Annotation.annotation_type.in_(["sentiment", "pillar"])
+            .options(selectinload(Annotation.annotator))   # ← fix: eager load en async
+            .where(
+                Annotation.record_id == rec.id,
+                Annotation.annotation_type.in_(["sentiment", "pillar"]),
             )
         )
         if annotation_type:
@@ -99,7 +101,9 @@ async def export_judged(
     current_user: User = Depends(require_role("judge", "admin")),
 ):
     result = await db.execute(
-        select(Annotation).where(
+        select(Annotation)
+        .options(selectinload(Annotation.annotator))   # ← fix: eager load en async
+        .where(
             Annotation.project_id == project_id,
             Annotation.judge_final_value != None,
             Annotation.reviewer_decision != "reject",

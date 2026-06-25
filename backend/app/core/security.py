@@ -9,8 +9,8 @@ from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.database import get_db
-from app.models.models import User
+from backend.app.core.database import get_db
+from backend.app.models.models import User
 
 SECRET_KEY  = os.getenv("SECRET_KEY", "change-me-in-production-use-32chars!")
 ALGORITHM   = "HS256"

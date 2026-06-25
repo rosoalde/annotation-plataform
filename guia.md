@@ -321,4 +321,4 @@ el CSV de salida tenga columnas `lang`, `world_continent`, `world_country`,
 | Raíz | `reorganize.sh` (script de ayuda) | ✅ generado para ti |
 
 **No falta nada más.** Con estos archivos + tus 20 archivos ya correctos, el
-sistema está completo y listo para `docker compose up --build`.
+sistema está completo y listo para `docker compose up --build -d`.

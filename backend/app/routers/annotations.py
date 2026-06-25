@@ -11,10 +11,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, distinct
 
-from app.core.database import get_db
-from app.core.security import get_current_user
-from app.models.models import User, Record, Annotation, RecordLock, Keyword
-from app.schemas.schemas import (
+from backend.app.core.database import get_db
+from backend.app.core.security import get_current_user
+from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
+from backend.app.schemas.schemas import (
     SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
     AnnotationResponse,
 )
@@ -90,27 +90,32 @@ async def save_pillar(
                                is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
 
 
-@router.post("/{project_id}/keywords", response_model=AnnotationResponse)
+@router.post("/{project_id}/keywords")
 async def save_keyword(
     project_id: str,
     body: KeywordDecisionCreate,
     db: AsyncSession   = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    db.add(Keyword(
+    """
+    Guarda la decisión sobre una keyword.
+    NOTA: Las keywords no son registros anotables, así que aquí NO se crea
+    una Annotation (que requeriría un record_id FK válido). La tabla Keyword
+    es la fuente de verdad para estas decisiones.
+    """
+    kw = Keyword(
         project_id=project_id, keyword=body.keyword, type=body.type or "llm_generated",
         accepted=body.accepted, reason=body.reason, languages=body.languages,
-    ))
-    ann = Annotation(
-        record_id="keyword", project_id=project_id, annotator_id=current_user.id,
-        annotation_type="keyword", corrected_topic=body.keyword,
-        is_correction=not body.accepted, correction_reason=body.reason,
     )
-    db.add(ann)
+    db.add(kw)
     await db.commit()
-    await db.refresh(ann)
-    return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
-                               is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
+    await db.refresh(kw)
+    return {
+        "id": kw.id,
+        "keyword": kw.keyword,
+        "accepted": kw.accepted,
+        "project_id": kw.project_id,
+    }
 
 
 @router.get("/{project_id}/keywords")

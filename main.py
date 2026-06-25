@@ -6,10 +6,14 @@ New in this version:
     produced by the LLM re-analysis pass and imported as CSV columns
 """
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.database import engine, Base
-from app.routers import auth, admin, projects, records, annotations, review, judge
+from backend.app.core.database import engine, Base
+from backend.app.routers import auth, admin, projects, records, annotations, review, judge
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(title="LoRA Annotation Platform", version="3.1.0")
 
@@ -36,3 +40,7 @@ app.include_router(judge.router,       prefix="/api/judge")
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "version": "3.1.0"}
+
+@app.get("/")
+async def root():
+    return FileResponse("frontend/index.html")

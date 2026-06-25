@@ -13,10 +13,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.core.database import get_db
-from app.core.security import require_role
-from app.models.models import User
-from app.schemas.schemas import PendingUserOut, UserApprovalDecision, UserOut
+from backend.app.core.database import get_db
+from backend.app.core.security import require_role
+from backend.app.models.models import User
+from backend.app.schemas.schemas import PendingUserOut, UserApprovalDecision, UserOut
 
 router = APIRouter(tags=["admin"])
 

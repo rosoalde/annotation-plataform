@@ -1,4 +1,3 @@
-version: "3.9"
 
 services:
   db:
@@ -8,7 +7,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB:       annotation_db
     ports:
-      - "5432:5432"
+      - "5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,18 +17,18 @@ services:
       retries: 5
 
   backend:
-    build: ./backend
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8007 --reload
+    build: ./
+    command: uvicorn main:app --host 0.0.0.0 --port 8007 --reload
     ports:
       - "8007:8007"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/annotation_db
-      SECRET_KEY:   change-me-in-production-use-32chars!
+      SECRET_KEY: change-me-in-production-use-32chars!
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./backend:/app
+      - .:/app                # <-- monta TODO el proyecto
     working_dir: /app
 
   frontend:

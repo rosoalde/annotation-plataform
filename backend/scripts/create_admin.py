@@ -18,9 +18,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import select
-from app.core.database import AsyncSessionLocal, engine, Base
-from app.core.security import hash_password
-from app.models.models import User
+from backend.app.core.database import AsyncSessionLocal, engine, Base
+from backend.app.core.security import hash_password
+from backend.app.models.models import User
 
 
 async def main():
