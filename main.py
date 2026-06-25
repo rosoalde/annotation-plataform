@@ -41,6 +41,6 @@ app.include_router(judge.router,       prefix="/api/judge")
 async def health():
     return {"status": "ok", "version": "3.1.0"}
 
-@app.get("/")
-async def root():
-    return FileResponse("frontend/index.html")
+# @app.get("/")
+# async def root():
+#     return FileResponse("frontend/index.html")

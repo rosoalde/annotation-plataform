@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/annotation_db
       SECRET_KEY: change-me-in-production-use-32chars!
+      PYTHONPATH: /app
     depends_on:
       db:
         condition: service_healthy
