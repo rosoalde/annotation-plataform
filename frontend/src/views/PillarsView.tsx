@@ -18,6 +18,9 @@ const S: Record<string, React.CSSProperties> = {
     topbar: { height: 48, background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 },
     content: { flex: 1, overflowY: "auto", padding: 22, maxWidth: 900 },
     recCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 12 },
+    ctxBlock: { background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "10px 12px", marginBottom: 10, fontSize: 11 },
+    ctxLabel: { fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase" as const, color: "var(--muted)", fontWeight: 600, marginBottom: 5 },
+    ctxLine: { borderLeft: "2px solid var(--border2)", paddingLeft: 8, color: "var(--muted)", marginBottom: 3 },
     toast: { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
 };
 
@@ -145,6 +148,7 @@ export default function PillarsView() {
                             )}
                             {lockErr && <div style={{ background: "rgba(224,82,82,0.1)", border: "1px solid rgba(224,82,82,0.3)", borderRadius: "var(--r)", padding: "8px 10px", fontSize: 12, color: "var(--red)", marginBottom: 10 }}>⚠ {lockErr}</div>}
 
+                            <div style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "var(--muted)", marginBottom: 3 }}>[Contenido a clasificar]</div>
                             <div style={{ fontSize: 13, lineHeight: 1.7, color: "var(--text)", background: "var(--card)", borderRadius: "var(--r)", padding: 12, margin: "8px 0 12px", borderLeft: "3px solid var(--teal)" }}>
                                 {rec.content}
                             </div>

@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../stores/authStore";
 
 const S: Record<string, React.CSSProperties> = {
@@ -40,6 +41,7 @@ const roleColor = (role: string) => ({ annotator: "var(--accent2)", reviewer: "v
 export default function Layout() {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const qc = useQueryClient();
     const { id } = useParams<{ id?: string }>();
     const role = user?.role || "";
 
@@ -99,7 +101,7 @@ export default function Layout() {
 
                 <div style={S.bottom}>
                     <button
-                        onClick={() => { logout(); navigate("/login"); }}
+                        onClick={() => { logout(); qc.clear(); navigate("/login"); }}
                         style={{ width: "100%", padding: "6px 0", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 12 }}>
                         Cerrar sesión
                     </button>
