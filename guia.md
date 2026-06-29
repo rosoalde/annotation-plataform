@@ -194,8 +194,8 @@ cd annotation-platform
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173
-- Backend / Swagger docs: http://localhost:8007/docs
+- Frontend: http://147.156.152.30:5173
+- Backend / Swagger docs: http://147.156.152.30:8007/docs
 - PostgreSQL: localhost:5432
 
 Para parar:

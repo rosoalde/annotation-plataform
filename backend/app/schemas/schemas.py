@@ -103,7 +103,23 @@ class RecordOut(BaseModel):
     world_country: Optional[str] = None
     world_region: Optional[str] = None
     world_city: Optional[str] = None
-
+    url_post: Optional[str] = None
+    pertinencia: Optional[str] = None
+    justif_pertinencia: Optional[str] = None
+    posicion: Optional[str] = None
+    justif_posicion: Optional[str] = None
+    justif_topic: Optional[str] = None
+    justif_sentimiento: Optional[str] = None
+    justif_legitimacion: Optional[str] = None
+    justif_efectividad: Optional[str] = None
+    justif_justicia_equidad: Optional[str] = None
+    justif_confianza_institucional: Optional[str] = None
+    justif_lang: Optional[str] = None
+    justif_continente: Optional[str] = None
+    justif_pais: Optional[str] = None
+    justif_region: Optional[str] = None
+    justif_ciudad: Optional[str] = None
+    codigo_pais: Optional[str] = None
     sentiment_llm: Optional[int]
     topic_llm: Optional[str]
     legitimacion: Optional[int]
@@ -116,6 +132,7 @@ class RecordOut(BaseModel):
 
     class Config:
         from_attributes = True
+        extra = "ignore"   # ignora columnas extra en el CSV sin error
 
 class RecordListResponse(BaseModel):
     records: List[RecordOut]
@@ -252,3 +269,9 @@ class ProjectStats(BaseModel):
     judged: int
     total_annotations: int
     total_corrections: int
+
+class CsvImportResult(BaseModel):
+    imported: int
+    skipped: int
+    errors: List[dict]
+    project_updated: bool

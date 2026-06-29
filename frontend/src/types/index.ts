@@ -90,6 +90,23 @@ export interface Record {
     efectividad?: number;
     justicia_equidad?: number;
     confianza_institucional?: number;
+    url_post?: string;
+    pertinencia?: string;
+    justif_pertinencia?: string;
+    posicion?: string;
+    justif_posicion?: string;
+    justif_topic?: string;
+    justif_sentimiento?: string;
+    justif_legitimacion?: string;
+    justif_efectividad?: string;
+    justif_justicia_equidad?: string;
+    justif_confianza_institucional?: string;
+    justif_lang?: string;
+    justif_continente?: string;
+    justif_pais?: string;
+    justif_region?: string;
+    justif_ciudad?: string;
+    codigo_pais?: string;
     status: RecordStatus;
     locked_by_other: boolean;
     locked_until?: string;
@@ -210,4 +227,11 @@ export interface ApiError {
     error?: string;
     message?: string;
     detail?: string | object;
+}
+
+export interface CsvImportResult {
+    imported: number;
+    skipped: number;
+    errors: Array<{ fila: number; error: string }>;
+    project_updated: boolean;
 }

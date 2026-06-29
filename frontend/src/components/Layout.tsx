@@ -75,6 +75,12 @@ export default function Layout() {
                                 <NavItem to={`/projects/${id}/review`}>🔍 Revisar</NavItem>
                             </>
                         )}
+                        {(isAdmin || canReview) && (
+                            <>
+                                <div style={S.navSection}>Datos</div>
+                                <NavItem to={`/projects/${id}/import`}>⬆ Importar CSV</NavItem>
+                            </>
+                        )}
                         {isJudge && (
                             <>
                                 <div style={S.navSection}>Juez</div>

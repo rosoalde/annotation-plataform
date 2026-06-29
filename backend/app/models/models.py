@@ -115,12 +115,41 @@ class Record(Base):
     world_region     = Column(String(80),  nullable=True)
     world_city       = Column(String(80),  nullable=True)
 
+    # ── URL directa al post/comentario original ───────────────────────────────
+    url_post = Column(String(500), nullable=True)  # URL directa al post en la plataforma
+
+    # ── Campos de análisis LLM con justificaciones ───────────────────────────
+    # Pertinencia
+    pertinencia        = Column(String(20), nullable=True)   # "relevante" | "irrelevante"
+    justif_pertinencia = Column(Text, nullable=True)
+
+    # Posición
+    posicion           = Column(String(20), nullable=True)   # "a_favor" | "en_contra" | "neutral" | "ambiguo"
+    justif_posicion    = Column(Text, nullable=True)
+
     sentiment_llm           = Column(Integer, nullable=True)
+    justif_sentimiento = Column(Text, nullable=True)
     topic_llm                = Column(String(200), nullable=True)
+    justif_topic   = Column(Text, nullable=True)
     legitimacion             = Column(Integer, nullable=True)
     efectividad              = Column(Integer, nullable=True)
     justicia_equidad         = Column(Integer, nullable=True)
     confianza_institucional  = Column(Integer, nullable=True)
+
+    justif_legitimacion             = Column(Text, nullable=True)
+    justif_efectividad              = Column(Text, nullable=True)
+    justif_justicia_equidad         = Column(Text, nullable=True)
+    justif_confianza_institucional  = Column(Text, nullable=True)
+
+    # Justificaciones de geolocalización (world_* ya existen)
+    justif_lang        = Column(Text, nullable=True)
+    justif_continente  = Column(Text, nullable=True)
+    justif_pais        = Column(Text, nullable=True)
+    justif_region      = Column(Text, nullable=True)
+    justif_ciudad      = Column(Text, nullable=True)
+    codigo_pais        = Column(String(2), nullable=True)    # ISO 3166-1 alpha-2
+
+
 
     # status: pending | annotated_partial | annotated | judged
     status     = Column(String(30), default="pending")

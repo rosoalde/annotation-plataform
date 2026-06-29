@@ -12,6 +12,7 @@ import JudgeView from "./views/JudgeView";
 import AdminView from "./views/AdminView";
 import Layout from "./components/Layout";
 import ProtectedRoute, { AdminRoute } from "./components/ProtectedRoute";
+import ImportView from "./views/ImportView";
 
 import "./index.css";
 
@@ -33,6 +34,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                             <Route path="/projects/:id/pillars" element={<PillarsView />} />
                             <Route path="/projects/:id/review" element={<ReviewView />} />
                             <Route path="/projects/:id/judge" element={<JudgeView />} />
+                            <Route path="/projects/:id/import" element={<ImportView />} />
                             <Route element={<AdminRoute />}>
                                 <Route path="/admin" element={<AdminView />} />
                             </Route>

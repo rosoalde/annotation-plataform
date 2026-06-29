@@ -3,7 +3,7 @@ import type {
     TokenResponse, RegisterResponse, Project, RecordListResponse, AnnotationResponse,
     SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
     ReviewAnnotation, ReviewDecision, JudgeRecord, ProjectStats,
-    PendingUser, AppUser, UserRole,
+    PendingUser, AppUser, UserRole, CsvImportResult,
 } from "../types";
 
 //const BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8007/api";
@@ -86,6 +86,17 @@ export const recordsApi = {
 
     importRecords: (projectId: string, items: object[]) =>
         http.post(`/projects/${projectId}/records/import`, items).then((r) => r.data),
+
+    importCsv: (projectId: string, csvFile: File, metaJson?: object) => {
+        const form = new FormData();
+        form.append("csv_file", csvFile);
+        form.append("meta_json", JSON.stringify(metaJson ?? {}));
+        return http.post<CsvImportResult>(
+            `/projects/${projectId}/records/import-csv`,
+            form,
+            { headers: { "Content-Type": "multipart/form-data" } }
+        ).then((r) => r.data);
+    },
 };
 
 // ── Annotations ───────────────────────────────────────────────────────────

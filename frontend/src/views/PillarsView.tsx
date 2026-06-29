@@ -156,6 +156,29 @@ export default function PillarsView() {
                                 </button>
                             )}
 
+                            {/* URL directa al post */}
+                            {rec.url_post && (
+                                <div style={{ marginBottom: 8 }}>
+                                    <a href={rec.url_post} target="_blank" rel="noopener noreferrer"
+                                        style={{ fontSize: 11, color: "var(--teal)", textDecoration: "none" }}>
+                                        🔗 Ver post original en {rec.platform || "la plataforma"} ↗
+                                    </a>
+                                </div>
+                            )}
+
+                            {/* Post raíz: solo si hay cuerpo_padre (indica que es un comentario) */}
+                            {rec.cuerpo_padre && (
+                                <div style={{ ...S.ctxBlock, borderLeft: "2px solid var(--purple)" }}>
+                                    <div style={S.ctxLabel}>Post raíz (contexto)</div>
+                                    {rec.titulo_padre && (
+                                        <div style={S.ctxLine}><strong>[Título]</strong> {rec.titulo_padre}</div>
+                                    )}
+                                    <div style={{ ...S.ctxLine, color: "var(--muted)" }}>
+                                        {rec.cuerpo_padre.slice(0, 300)}{rec.cuerpo_padre.length > 300 ? "…" : ""}
+                                    </div>
+                                </div>
+                            )}
+
                             {(hasLock || (!rec.locked_by_other && !lockErr)) && (
                                 <>
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>

@@ -168,7 +168,28 @@ export default function SentimentView() {
                                     {rec.tweet_anterior && <div style={S.ctxLine}><strong>[Post anterior]</strong> {rec.tweet_anterior.slice(0, 200)}</div>}
                                 </div>
                             )}
+                            {/* URL directa al post */}
+                            {rec.url_post && (
+                                <div style={{ marginBottom: 8 }}>
+                                    <a href={rec.url_post} target="_blank" rel="noopener noreferrer"
+                                        style={{ fontSize: 11, color: "var(--teal)", textDecoration: "none" }}>
+                                        🔗 Ver post original en {rec.platform || "la plataforma"} ↗
+                                    </a>
+                                </div>
+                            )}
 
+                            {/* Post raíz: solo si hay cuerpo_padre (indica que es un comentario) */}
+                            {rec.cuerpo_padre && (
+                                <div style={{ ...S.ctxBlock, borderLeft: "2px solid var(--purple)" }}>
+                                    <div style={S.ctxLabel}>Post raíz (contexto)</div>
+                                    {rec.titulo_padre && (
+                                        <div style={S.ctxLine}><strong>[Título]</strong> {rec.titulo_padre}</div>
+                                    )}
+                                    <div style={{ ...S.ctxLine, color: "var(--muted)" }}>
+                                        {rec.cuerpo_padre.slice(0, 300)}{rec.cuerpo_padre.length > 300 ? "…" : ""}
+                                    </div>
+                                </div>
+                            )}
                             <div style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "#6b7080", marginBottom: 3 }}>[Contenido a clasificar]</div>
                             <div style={{ ...S.contentBlock, borderLeftColor: sentColor(rec.sentiment_llm) }}>{rec.content}</div>
 
