@@ -202,6 +202,12 @@ class Annotation(Base):
     original_value  = Column(Integer, nullable=True)
     corrected_value = Column(Integer, nullable=True)
 
+    # Campos genéricos para anotar cualquier atributo de texto del Record
+    # que no tiene columnas dedicadas (posicion, lang, world_*)
+    field_name     = Column(String(50), nullable=True)   # "posicion" | "lang" | "world_country" | ...
+    original_text  = Column(Text, nullable=True)
+    corrected_text = Column(Text, nullable=True)
+
     # Common
     is_correction     = Column(Boolean, default=False)
     correction_reason = Column(Text, nullable=True)

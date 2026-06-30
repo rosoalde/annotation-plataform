@@ -174,6 +174,23 @@ export interface AnnotationResponse {
     version: number;
 }
 
+
+export interface FieldAnnotationCreate {
+    record_id: string;
+    project_id: string;
+    field_name: string;
+    original_text: string;
+    corrected_text: string;
+    is_correction: boolean;
+    correction_reason: string;
+}
+
+export interface ProjectUpdate {
+    name: string;
+    tema: string;
+    desc_tema: string;
+    population_scope: string;
+}
 // ── Review ─────────────────────────────────────────────────────────────────
 export interface ReviewAnnotation {
     id: string;

@@ -90,3 +90,22 @@ async def project_stats(
         annotated=totals["annotated"], judged=totals["judged"],
         total_annotations=ann_r.scalar() or 0, total_corrections=corr_r.scalar() or 0,
     )
+
+@router.put("/{project_id}", response_model=ProjectOut)
+async def update_project(
+    project_id: str,
+    body: ProjectUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin", "reviewer")),
+):
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(404, "Project not found")
+    for field, value in body.dict(exclude_unset=True).items():
+        setattr(project, field, value)
+    await db.commit()
+    await db.refresh(project)
+    return ProjectOut(id=project.id, name=project.name, tema=project.tema,
+        desc_tema=project.desc_tema, population_scope=project.population_scope,
+        output_folder=project.output_folder, created_at=project.created_at, keywords=[])

@@ -70,6 +70,7 @@ export const projectsApi = {
     list: () => http.get<Project[]>("/projects").then((r) => r.data),
     get: (id: string) => http.get<Project>(`/projects/${id}`).then((r) => r.data),
     create: (data: Partial<Project>) => http.post<Project>("/projects", data).then((r) => r.data),
+    update: (id: string, data: Partial<Project>) => http.put<Project>(`/projects/${id}`, data).then((r) => r.data),
     stats: (projectId: string) => http.get<ProjectStats>(`/projects/${projectId}/stats`).then((r) => r.data),
 };
 
@@ -112,6 +113,12 @@ export const annotationsApi = {
 
     listKeywords: (projectId: string) =>
         http.get(`/projects/${projectId}/keywords`).then((r) => r.data),
+
+    saveField: (projectId: string, data: FieldAnnotationCreate) =>
+        http.post<AnnotationResponse>(`/projects/${projectId}/annotations/field`, data).then((r) => r.data),
+
+    decideKeyword: (projectId: string, keywordId: string, data: KeywordDecisionCreate) =>
+        http.patch(`/projects/${projectId}/keywords/${keywordId}`, data).then((r) => r.data),
 };
 
 // ── Review ────────────────────────────────────────────────────────────────

@@ -227,6 +227,21 @@ class AnnotationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class FieldAnnotationCreate(BaseModel):
+    record_id: str
+    project_id: str
+    field_name: str          # "posicion" | "lang" | "world_continent" | "world_country" | "world_region" | "world_city"
+    original_text: Optional[str] = None
+    corrected_text: Optional[str] = None
+    is_correction: bool
+    correction_reason: Optional[str] = None
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    tema: Optional[str] = None
+    desc_tema: Optional[str] = None
+    population_scope: Optional[str] = None        
+
 
 # ── Review ─────────────────────────────────────────────────────────────────
 class ReviewAnnotationOut(BaseModel):

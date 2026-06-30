@@ -130,3 +130,39 @@ async def list_keywords(
          "reason": k.reason, "languages": k.languages, "reviewer_decision": k.reviewer_decision}
         for k in result.scalars().all()
     ]
+
+@router.post("/{project_id}/annotations/field", response_model=AnnotationResponse)
+async def save_field(
+    project_id: str,
+    body: FieldAnnotationCreate,
+    db: AsyncSession   = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    ann = Annotation(
+        record_id=body.record_id, project_id=project_id, annotator_id=current_user.id,
+        annotation_type="field", field_name=body.field_name,
+        original_text=body.original_text, corrected_text=body.corrected_text,
+        is_correction=body.is_correction, correction_reason=body.correction_reason,
+    )
+    db.add(ann)
+    await _release_lock(db, body.record_id, current_user.id)
+    await db.commit()
+    await db.refresh(ann)
+    return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
+                               is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
+
+
+@router.patch("/{project_id}/keywords/{keyword_id}")
+async def decide_keyword(
+    project_id: str, keyword_id: str,
+    body: KeywordDecisionCreate,
+    db: AsyncSession   = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    kw_r = await db.execute(select(Keyword).where(Keyword.id == keyword_id))
+    kw = kw_r.scalar_one_or_none()
+    if not kw:
+        raise HTTPException(404, "Keyword not found")
+    kw.accepted, kw.reason = body.accepted, body.reason
+    await db.commit()
+    return {"id": kw.id, "accepted": kw.accepted}
