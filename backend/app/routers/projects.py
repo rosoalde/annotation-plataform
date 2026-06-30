@@ -6,7 +6,7 @@ from sqlalchemy import select, func
 from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, require_role
 from backend.app.models.models import User, Project, Record, Annotation
-from backend.app.schemas.schemas import ProjectCreate, ProjectOut, ProjectStats
+from backend.app.schemas.schemas import ProjectCreate, ProjectOut, ProjectStats, ProjectUpdate
 
 router = APIRouter(tags=["projects"])
 

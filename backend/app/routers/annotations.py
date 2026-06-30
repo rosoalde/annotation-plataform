@@ -16,7 +16,7 @@ from backend.app.core.security import get_current_user
 from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
 from backend.app.schemas.schemas import (
     SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
-    AnnotationResponse,
+    AnnotationResponse, FieldAnnotationCreate
 )
 
 router = APIRouter(tags=["annotations"])

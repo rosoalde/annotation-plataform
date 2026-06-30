@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type {
     TokenResponse, RegisterResponse, Project, RecordListResponse, AnnotationResponse,
-    SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
+    SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate, FieldAnnotationCreate,
     ReviewAnnotation, ReviewDecision, JudgeRecord, ProjectStats,
     PendingUser, AppUser, UserRole, CsvImportResult,
 } from "../types";
