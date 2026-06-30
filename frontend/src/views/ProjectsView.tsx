@@ -63,7 +63,7 @@ export default function ProjectsView() {
             <div style={S.content}>
                 <div style={{ background: "var(--surface)", borderLeft: "3px solid var(--accent)", borderRadius: "0 var(--r) var(--r) 0", padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "var(--text)", lineHeight: 1.7 }}>
                     Selecciona un proyecto para empezar a anotar. Tu progreso se guarda automáticamente.
-                    {isAdmin && " Una vez dentro de un proyecto, usa “⬆ Importar CSV” en el menú lateral para cargar registros."}
+                    {isAdmin && " Una vez dentro de un proyecto, debes usar “⬆ Importar CSV” en el menú lateral para cargar registros."}
                 </div>
 
                 {showForm && (

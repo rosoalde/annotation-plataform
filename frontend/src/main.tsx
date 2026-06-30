@@ -5,8 +5,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import LoginView from "./views/LoginView";
 import ProjectsView from "./views/ProjectsView";
-import SentimentView from "./views/SentimentView";
-import PillarsView from "./views/PillarsView";
+// import SentimentView from "./views/SentimentView";
+// import PillarsView from "./views/PillarsView";
+import AnnotateView from "./views/AnnotateView";
 import ReviewView from "./views/ReviewView";
 import JudgeView from "./views/JudgeView";
 import KeywordsView from "./views/KeywordsView";
@@ -32,8 +33,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                             <Route index element={<Navigate to="/projects" replace />} />
                             <Route path="/projects" element={<ProjectsView />} />
                             <Route path="/projects/:id/keywords" element={<KeywordsView />} />
-                            <Route path="/projects/:id/sentiment" element={<SentimentView />} />
-                            <Route path="/projects/:id/pillars" element={<PillarsView />} />
+                            {/* <Route path="/projects/:id/sentiment" element={<SentimentView />} />
+                            <Route path="/projects/:id/pillars" element={<PillarsView />} /> */}
+                            <Route path="/projects/:id/anotar" element={<AnnotateView />} />
                             <Route path="/projects/:id/review" element={<ReviewView />} />
                             <Route path="/projects/:id/judge" element={<JudgeView />} />
                             <Route path="/projects/:id/import" element={<ImportView />} />

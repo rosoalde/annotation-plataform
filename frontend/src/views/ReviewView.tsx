@@ -6,16 +6,16 @@ import { reviewApi } from "../services/api";
 const sentLabel = (v?: number) => ({ 1: "↑ Positivo", "-1": "↓ Negativo", 0: "→ Neutro", 2: "✕ No relac." }[String(v ?? "")] ?? String(v ?? "—"));
 
 const S: Record<string, React.CSSProperties> = {
-  page:    { display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" },
-  topbar:  { height: 48, background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 },
+  page: { display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" },
+  topbar: { height: 48, background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 },
   content: { flex: 1, overflowY: "auto", padding: 22, maxWidth: 960 },
-  card:    { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 12 },
-  toast:   { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
+  card: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 12 },
+  toast: { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
 };
 
 export default function ReviewView() {
   const { id: projectId } = useParams<{ id: string }>();
-  const qc                = useQueryClient();
+  const qc = useQueryClient();
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const showToast = useCallback((msg: string, ok = true) => {
@@ -25,8 +25,8 @@ export default function ReviewView() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["review-pending", projectId],
-    queryFn:  () => reviewApi.pending(projectId!),
-    enabled:  !!projectId,
+    queryFn: () => reviewApi.pending(projectId!),
+    enabled: !!projectId,
   });
 
   const decideMutation = useMutation({
@@ -79,11 +79,13 @@ export default function ReviewView() {
                 {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.original_sentiment)} | {ann.original_topic || "—"}</div>}
                 {ann.annotation_type === "pillar" && <div>{ann.pillar}: {ann.original_value}</div>}
                 {ann.annotation_type === "keyword" && <div>{ann.corrected_topic}</div>}
+                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
               </div>
               <div style={{ background: "rgba(78,123,239,0.08)", padding: 10, borderRadius: "var(--r)", border: "1px solid rgba(78,123,239,0.25)" }}>
                 <div style={{ color: "var(--accent2)", marginBottom: 4 }}>👤 Corrección humana</div>
                 {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.corrected_sentiment)} | {ann.corrected_topic || "—"}</div>}
                 {ann.annotation_type === "pillar" && <div>{ann.pillar}: {ann.corrected_value}</div>}
+                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
                 {ann.annotation_type === "keyword" && <div>{ann.is_correction ? "Rechazada" : "Aceptada"}</div>}
               </div>
             </div>

@@ -67,7 +67,13 @@ async def list_records(
     done     = len(done_ids)
     pending  = max(0, total - done)   # ← never negative
 
-    page_q  = q.order_by(Record.created_at).offset(offset).limit(limit)
+    # ANTES
+    # page_q  = q.order_by(Record.created_at).offset(offset).limit(limit)
+    # DESPUÉS
+    page_q = q
+    if annotation_type and done_ids:
+        page_q = page_q.where(Record.id.notin_(done_ids))   # ← oculta lo que YA anotaste
+    page_q = page_q.order_by(Record.created_at).offset(offset).limit(limit)
     result  = await db.execute(page_q)
     records = result.scalars().all()
 

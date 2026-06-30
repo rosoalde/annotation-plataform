@@ -23,7 +23,7 @@ async def pending_review(
             Annotation.project_id == project_id,
             Annotation.is_correction == True,
             Annotation.reviewer_decision == None,
-            Annotation.annotation_type.in_(["sentiment", "pillar", "keyword"]),
+            Annotation.annotation_type.in_(["sentiment", "pillar", "keyword","field"]),
         ).order_by(Annotation.created_at)
     )
     annotations = result.scalars().all()
@@ -34,6 +34,7 @@ async def pending_review(
         out.append(ReviewAnnotationOut(
             id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
             annotator_name=annotator_name,
+            field_name=ann.field_name, original_text=ann.original_text, corrected_text=ann.corrected_text,
             original_sentiment=ann.original_sentiment, corrected_sentiment=ann.corrected_sentiment,
             correction_reason=ann.correction_reason,
             original_topic=ann.original_topic, corrected_topic=ann.corrected_topic,

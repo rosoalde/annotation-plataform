@@ -33,9 +33,12 @@ export default function KeywordsView() {
     });
 
     const addMutation = useMutation({
-        mutationFn: () => annotationsApi.saveKeyword(projectId!, {
-            project_id: projectId!, keyword: newKw, accepted: true, type: "human_added",
-        }),
+        // ANTES
+        // mutationFn: ({ kw, accepted }: { kw: KeywordItem; accepted: boolean }) =>
+        //     annotationsApi.decideKeyword(projectId!, kw.id, { project_id: projectId!, keyword: kw.keyword, accepted }),
+        // DESPUÉS
+        mutationFn: ({ kw, accepted, reason }: { kw: KeywordItem; accepted: boolean; reason?: string }) =>
+            annotationsApi.decideKeyword(projectId!, kw.id, { project_id: projectId!, keyword: kw.keyword, accepted, reason }),
         onSuccess: () => { setNewKw(""); qc.invalidateQueries({ queryKey: ["keywords", projectId] }); },
     });
 
@@ -77,6 +80,12 @@ export default function KeywordsView() {
                         }}>
                             {kw.accepted ? "aceptada" : "rechazada"}
                         </span>
+                        <input
+                            style={{ ...S.input, flex: 2, fontSize: 11 }}
+                            placeholder="Justificación..."
+                            defaultValue={kw.reason ?? ""}
+                            onBlur={(e) => decideMutation.mutate({ kw, accepted: kw.accepted ?? true, reason: e.target.value })}
+                        />
                         <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--green)" }}
                             onClick={() => decideMutation.mutate({ kw, accepted: true })}>✓</button>
                         <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--red)" }}

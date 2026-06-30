@@ -256,6 +256,9 @@ class ReviewAnnotationOut(BaseModel):
     corrected_topic: Optional[str]
     original_value: Optional[int]
     corrected_value: Optional[int]
+    field_name: Optional[str] = None
+    original_text: Optional[str] = None
+    corrected_text: Optional[str] = None
     pillar: Optional[str]
     is_correction: bool
     reviewer_decision: Optional[str]
