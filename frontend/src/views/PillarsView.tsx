@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordsApi, annotationsApi, LockConflictError } from "../services/api";
 import type { Record as AnnotRecord } from "../types";
+import ProjectContextBar from "../components/ProjectContextBar";
 
 const PILLARS = [
     { key: "legitimacion", label: "Legitimación", color: "var(--accent2)" },
@@ -107,6 +108,7 @@ export default function PillarsView() {
             </div>
 
             <div style={S.content}>
+                <ProjectContextBar projectId={projectId!} />
                 <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 14, marginBottom: 18 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ fontSize: 11, color: "var(--muted)" }}>Progreso</span>

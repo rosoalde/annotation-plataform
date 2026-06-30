@@ -13,6 +13,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { recordsApi } from "../services/api";
 import type { CsvImportResult } from "../types";
+import ProjectContextBar from "../components/ProjectContextBar";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ export default function ImportView() {
             </div>
 
             <div style={S.content}>
+                <ProjectContextBar projectId={projectId!} />
                 {/* ── PASO 1: Selección de archivos ──────────────────── */}
                 {step === 1 && (
                     <>

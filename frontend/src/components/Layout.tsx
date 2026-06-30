@@ -81,6 +81,7 @@ export default function Layout() {
                             <>
                                 <div style={S.navSection}>Datos</div>
                                 <NavItem to={`/projects/${id}/import`}>⬆ Importar CSV</NavItem>
+                                <NavItem to={`/projects/${id}/keywords`}>🔑 Keywords</NavItem>
                             </>
                         )}
                         {isJudge && (

@@ -9,6 +9,7 @@ import SentimentView from "./views/SentimentView";
 import PillarsView from "./views/PillarsView";
 import ReviewView from "./views/ReviewView";
 import JudgeView from "./views/JudgeView";
+import KeywordsView from "./views/KeywordsView";
 import AdminView from "./views/AdminView";
 import Layout from "./components/Layout";
 import ProtectedRoute, { AdminRoute } from "./components/ProtectedRoute";
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                         <Route element={<Layout />}>
                             <Route index element={<Navigate to="/projects" replace />} />
                             <Route path="/projects" element={<ProjectsView />} />
+                            <Route path="/projects/:id/keywords" element={<KeywordsView />} />
                             <Route path="/projects/:id/sentiment" element={<SentimentView />} />
                             <Route path="/projects/:id/pillars" element={<PillarsView />} />
                             <Route path="/projects/:id/review" element={<ReviewView />} />
