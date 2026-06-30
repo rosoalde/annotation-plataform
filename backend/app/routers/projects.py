@@ -11,7 +11,7 @@ from backend.app.schemas.schemas import ProjectCreate, ProjectOut, ProjectStats
 router = APIRouter(tags=["projects"])
 
 
-@router.get("/", response_model=List[ProjectOut])
+@router.get("", response_model=List[ProjectOut])
 async def list_projects(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -45,7 +45,7 @@ async def get_project(
     )
 
 
-@router.post("/", response_model=ProjectOut)
+@router.post("", response_model=ProjectOut)
 async def create_project(
     body: ProjectCreate,
     db: AsyncSession = Depends(get_db),
