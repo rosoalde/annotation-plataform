@@ -45,7 +45,7 @@ export default function ProjectsView() {
 
     const handleSelect = (id: string) => {
         setProject(id);
-        navigate(`/projects/${id}/sentiment`);
+        navigate(`/projects/${id}/anotar`);
     };
 
     return (

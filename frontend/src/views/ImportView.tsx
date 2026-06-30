@@ -275,7 +275,7 @@ export default function ImportView() {
                                 Importar otro CSV
                             </button>
                             <button style={S.primaryBtn}
-                                onClick={() => navigate(`/projects/${projectId}/sentiment`)}>
+                                onClick={() => navigate(`/projects/${projectId}/anotar`)}>
                                 Ir a anotar →
                             </button>
                         </div>

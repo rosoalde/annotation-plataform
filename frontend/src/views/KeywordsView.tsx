@@ -5,6 +5,13 @@
  *  - Usa los endpoints YA EXISTENTES: GET/POST/PATCH /projects/{id}/keywords
  *  - Solo accesible para admin/reviewer (controlar en main.tsx igual que ImportView).
  */
+/**
+ * KeywordsView
+ *  - Lista las keywords/términos de búsqueda del proyecto (generados por el LLM
+ *    o añadidos a mano) y permite aceptarlas/rechazarlas.
+ *  - Usa los endpoints YA EXISTENTES: GET/POST/PATCH /projects/{id}/keywords
+ *  - Solo accesible para admin/reviewer (controlar en main.tsx igual que ImportView).
+ */
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -33,12 +40,10 @@ export default function KeywordsView() {
     });
 
     const addMutation = useMutation({
-        // ANTES
-        // mutationFn: ({ kw, accepted }: { kw: KeywordItem; accepted: boolean }) =>
-        //     annotationsApi.decideKeyword(projectId!, kw.id, { project_id: projectId!, keyword: kw.keyword, accepted }),
-        // DESPUÉS
-        mutationFn: ({ kw, accepted, reason }: { kw: KeywordItem; accepted: boolean; reason?: string }) =>
-            annotationsApi.decideKeyword(projectId!, kw.id, { project_id: projectId!, keyword: kw.keyword, accepted, reason }),
+        mutationFn: (keyword: string) =>
+            annotationsApi.saveKeyword(projectId!, {
+                project_id: projectId!, keyword, accepted: true, type: "manual",
+            }),
         onSuccess: () => { setNewKw(""); qc.invalidateQueries({ queryKey: ["keywords", projectId] }); },
     });
 
@@ -61,10 +66,10 @@ export default function KeywordsView() {
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                     <input style={S.input} value={newKw} placeholder="Añadir término manualmente..."
                         onChange={(e) => setNewKw(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && newKw.trim() && addMutation.mutate()} />
+                        onKeyDown={(e) => e.key === "Enter" && newKw.trim() && addMutation.mutate(newKw.trim())} />
                     <button style={{ ...S.btn, background: "var(--accent)", color: "#fff" }}
                         disabled={!newKw.trim() || addMutation.isPending}
-                        onClick={() => addMutation.mutate()}>+ Añadir</button>
+                        onClick={() => addMutation.mutate(newKw.trim())}>+ Añadir</button>
                 </div>
 
                 {isLoading && <div style={{ color: "var(--muted)" }}>Cargando...</div>}
