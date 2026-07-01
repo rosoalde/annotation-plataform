@@ -177,7 +177,7 @@ Antes de nada, necesitas un admin para poder aprobar a los demás.
 **A) Con Docker (después de levantar los contenedores, ver abajo):**
 ```bash
 docker compose exec backend python -m backend.scripts.create_admin \
-  --username admin --email romina.albornoz@uv.es --password Ds4m1ntra5
+  --username admin --email romina.albornoz@uv.es --password 
 ```
 
 **B) Sin Docker (entorno local):**
