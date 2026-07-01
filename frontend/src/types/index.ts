@@ -214,6 +214,7 @@ export interface ReviewAnnotation {
 export interface JudgeAnnotation {
     id: string;
     annotator: string;
+    annotation_type: string;
     corrected_sentiment?: number;
     correction_reason?: string;
     corrected_topic?: string;

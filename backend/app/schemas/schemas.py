@@ -276,11 +276,14 @@ class ReviewDecisionCreate(BaseModel):
 class JudgeAnnotationOut(BaseModel):
     id: str
     annotator: str
+    annotation_type: str 
     corrected_sentiment: Optional[int]
     correction_reason: Optional[str]
     corrected_topic: Optional[str]
     corrected_value: Optional[int]
     pillar: Optional[str]
+    field_name: Optional[str] = None      
+    corrected_text: Optional[str] = None
     is_correction: bool
     judge_final_value: Optional[int]
 

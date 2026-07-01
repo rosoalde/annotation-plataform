@@ -45,9 +45,11 @@ async def judge_records(
         ann_out = [
             JudgeAnnotationOut(
                 id=a.id, annotator=a.annotator.username if a.annotator else "?",
+                annotation_type=a.annotation_type,
                 corrected_sentiment=a.corrected_sentiment, correction_reason=a.correction_reason,
                 corrected_topic=a.corrected_topic, corrected_value=a.corrected_value,
-                pillar=a.pillar, is_correction=a.is_correction, judge_final_value=a.judge_final_value,
+                pillar=a.pillar, field_name=a.field_name, corrected_text=a.corrected_text,
+                is_correction=a.is_correction, judge_final_value=a.judge_final_value,
             )
             for a in anns
         ]
@@ -59,10 +61,21 @@ async def judge_records(
             cuerpo_padre=rec.cuerpo_padre, descripcion_padre=rec.descripcion_padre,
             tweet_anterior=rec.tweet_anterior, idioma_ia=rec.idioma_ia,
             lang=rec.lang, world_continent=rec.world_continent,
-            world_country=rec.world_country, world_region=rec.world_region, world_city=rec.world_city,
-            sentiment_llm=rec.sentiment_llm, topic_llm=rec.topic_llm,
-            legitimacion=rec.legitimacion, efectividad=rec.efectividad,
-            justicia_equidad=rec.justicia_equidad, confianza_institucional=rec.confianza_institucional,
+            world_country=rec.world_country, world_region=rec.world_region,
+            world_city=rec.world_city, codigo_pais=rec.codigo_pais,
+            url_post=rec.url_post,
+            pertinencia=rec.pertinencia, justif_pertinencia=rec.justif_pertinencia,
+            posicion=rec.posicion, justif_posicion=rec.justif_posicion,
+            sentiment_llm=rec.sentiment_llm, justif_sentimiento=rec.justif_sentimiento,
+            topic_llm=rec.topic_llm, justif_topic=rec.justif_topic,
+            legitimacion=rec.legitimacion, justif_legitimacion=rec.justif_legitimacion,
+            efectividad=rec.efectividad, justif_efectividad=rec.justif_efectividad,
+            justicia_equidad=rec.justicia_equidad, justif_justicia_equidad=rec.justif_justicia_equidad,
+            confianza_institucional=rec.confianza_institucional,
+            justif_confianza_institucional=rec.justif_confianza_institucional,
+            justif_lang=rec.justif_lang, justif_continente=rec.justif_continente,
+            justif_pais=rec.justif_pais, justif_region=rec.justif_region,
+            justif_ciudad=rec.justif_ciudad,
             status=rec.status, locked_by_other=False,
         )
         out.append(JudgeRecordOut(record=rec_out, annotations=ann_out))
@@ -123,6 +136,9 @@ async def export_judged(
         "keywords_accepted": [k.keyword for k in keywords_list if k.accepted is True],
         "keywords_rejected": [k.keyword for k in keywords_list if k.accepted is False],
         "keywords_pending":  [k.keyword for k in keywords_list if k.accepted is None],
+        "keywords_judge_accepted": [k.keyword for k in keywords_list if k.reviewer_decision == "accept"],
+        "keywords_judge_rejected": [k.keyword for k in keywords_list if k.reviewer_decision == "reject"],
+        "keywords_judge_pending":  [k.keyword for k in keywords_list if k.reviewer_decision is None],
     }
 
     ann_result = await db.execute(
@@ -170,6 +186,20 @@ async def export_judged(
             "efectividad_llm":        rec.efectividad,
             "justicia_equidad_llm":   rec.justicia_equidad,
             "confianza_inst_llm":     rec.confianza_institucional,
+            "idioma_ia_llm":              rec.idioma_ia,
+            "justif_sentimiento":         rec.justif_sentimiento,
+            "justif_topic":               rec.justif_topic,
+            "justif_pertinencia":         rec.justif_pertinencia,
+            "justif_posicion":            rec.justif_posicion,
+            "justif_legitimacion":        rec.justif_legitimacion,
+            "justif_efectividad":         rec.justif_efectividad,
+            "justif_justicia_equidad":    rec.justif_justicia_equidad,
+            "justif_confianza_institucional": rec.justif_confianza_institucional,
+            "justif_lang":                rec.justif_lang,
+            "justif_continente":          rec.justif_continente,
+            "justif_pais":                rec.justif_pais,
+            "justif_region":              rec.justif_region,
+            "justif_ciudad":              rec.justif_ciudad,
             **project_meta,
         }
 
