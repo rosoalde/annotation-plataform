@@ -5,13 +5,6 @@
  *  - Usa los endpoints YA EXISTENTES: GET/POST/PATCH /projects/{id}/keywords
  *  - Solo accesible para admin/reviewer (controlar en main.tsx igual que ImportView).
  */
-/**
- * KeywordsView
- *  - Lista las keywords/términos de búsqueda del proyecto (generados por el LLM
- *    o añadidos a mano) y permite aceptarlas/rechazarlas.
- *  - Usa los endpoints YA EXISTENTES: GET/POST/PATCH /projects/{id}/keywords
- *  - Solo accesible para admin/reviewer (controlar en main.tsx igual que ImportView).
- */
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

@@ -79,24 +79,24 @@ export default function JudgeView() {
         <div style={S.page}>
             <div style={S.topbar}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", flex: 1 }}>⚖️ Decisiones del juez</span>
-                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--border)", color: "var(--muted)", fontFamily: "monospace" }}>
+                <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--border)", color: "var(--accent2)", fontFamily: "monospace" }}>
                     {data?.length ?? 0} registros
                 </span>
                 <a ref={downloadRef} style={{ display: "none" }} />
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
-                    <span style={{ fontSize: 10, color: "var(--muted)", alignSelf: "center" }}>Exportar:</span>
+                    <span style={{ fontSize: 10, color: "var(--accent2)", alignSelf: "center" }}>Exportar:</span>
                     {(["judge", "annotators", "all"] as const).map((mode) => (
                         <div key={mode} style={{ display: "flex", gap: 3 }}>
                             <button
                                 disabled={exporting}
                                 onClick={() => handleExport("jsonl", mode)}
-                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 10, cursor: "pointer" }}>
+                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--accent2)", fontSize: 10, cursor: "pointer" }}>
                                 {mode} JSONL
                             </button>
                             <button
                                 disabled={exporting}
                                 onClick={() => handleExport("csv", mode)}
-                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 10, cursor: "pointer" }}>
+                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--accent2)", fontSize: 10, cursor: "pointer" }}>
                                 CSV
                             </button>
                         </div>

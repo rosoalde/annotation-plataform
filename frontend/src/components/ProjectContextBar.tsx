@@ -76,15 +76,23 @@ export default function ProjectContextBar({ projectId }: { projectId: string }) 
                         </div>
                     </div>
                 ) : (
-                    <div style={{ flex: 1, display: "flex", alignItems: "baseline", gap: 8 }}>
-                        <span style={{ ...S.value, color: "var(--muted)", flex: 1 }}>
+                    <div style={{ flex: 1, display: "flex", alignItems: "baseline", gap: 4 }}>
+                        <span style={{ ...S.value, color: "var(--muted)" }}>
                             {project.desc_tema || <em style={{ opacity: 0.5 }}>Sin descripción</em>}
                         </span>
                         <button
                             style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 13, padding: "0 2px", opacity: 0.6 }}
                             onClick={handleEdit}
                             title="Editar descripción del tema">
-                            ✎
+                            <span
+                                style={{
+                                    color: "var(--accent)",
+                                    fontSize: 13,
+                                    opacity: 1,
+                                }}
+                            >
+                                ✎
+                            </span>
                         </button>
                     </div>
                 )}

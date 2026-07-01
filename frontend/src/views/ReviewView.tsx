@@ -45,7 +45,7 @@ export default function ReviewView() {
     <div style={S.page}>
       <div style={S.topbar}>
         <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", flex: 1 }}>Revisión de anotaciones</span>
-        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--border)", color: "var(--muted)", fontFamily: "monospace" }}>
+        <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--accent)", color: "var(--accent2)", fontFamily: "monospace" }}>
           {data?.length ?? 0} pendientes
         </span>
       </div>

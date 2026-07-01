@@ -399,7 +399,7 @@ const S: Record<string, React.CSSProperties> = {
     page: { display: "flex", flexDirection: "column", height: "100vh", background: "#0a0b0e" },
     topbar: { height: 48, background: "#111318", borderBottom: "1px solid #252830", display: "flex", alignItems: "center", padding: "0 22px", gap: 12, flexShrink: 0 },
     topbarTitle: { fontSize: 13, fontWeight: 500, color: "#dde1ec", flex: 1 },
-    badge: { fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "#181b22", border: "1px solid #252830", color: "#6b7080", fontFamily: "monospace" },
+    badge: { fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "#181b22", border: "1px solid var(--accent)", color: "var(--accent2)", fontFamily: "monospace" },
     content: { flex: 1, overflowY: "auto", padding: 22, maxWidth: 900 },
     progressCard: { background: "#181b22", border: "1px solid #252830", borderRadius: 8, padding: 14, marginBottom: 18 },
     progressTrack: { height: 3, background: "#252830", borderRadius: 2, overflow: "hidden" },
