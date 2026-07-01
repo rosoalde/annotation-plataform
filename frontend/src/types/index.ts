@@ -219,6 +219,8 @@ export interface JudgeAnnotation {
     corrected_topic?: string;
     corrected_value?: number;
     pillar?: string;
+    field_name?: string;
+    corrected_text?: string;
     is_correction: boolean;
     judge_final_value?: number;
 }

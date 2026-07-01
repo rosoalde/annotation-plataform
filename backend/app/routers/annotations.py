@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, distinct
 
 from backend.app.core.database import get_db
-from backend.app.core.security import get_current_user
+from backend.app.core.security import get_current_user, require_role
 from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
 from backend.app.schemas.schemas import (
     SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
@@ -160,6 +160,8 @@ async def decide_keyword(
     db: AsyncSession   = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if body.accepted is False and not (body.reason or "").strip():
+        raise HTTPException(400, "Se requiere un motivo para rechazar una keyword")
     kw_r = await db.execute(select(Keyword).where(Keyword.id == keyword_id))
     kw = kw_r.scalar_one_or_none()
     if not kw:
@@ -167,3 +169,21 @@ async def decide_keyword(
     kw.accepted, kw.reason = body.accepted, body.reason
     await db.commit()
     return {"id": kw.id, "accepted": kw.accepted}
+
+@router.patch("/{project_id}/keywords/{keyword_id}/judge")
+async def judge_keyword(
+    project_id: str, keyword_id: str,
+    body: KeywordDecisionCreate,
+    db: AsyncSession   = Depends(get_db),
+    current_user: User = Depends(require_role("judge", "admin")),
+):
+    """Decisión final del juez sobre una keyword. Escribe en reviewer_decision."""
+    from backend.app.core.security import require_role  # ya importado arriba
+    kw_r = await db.execute(select(Keyword).where(Keyword.id == keyword_id))
+    kw = kw_r.scalar_one_or_none()
+    if not kw:
+        raise HTTPException(404, "Keyword not found")
+    kw.reviewer_decision = "accept" if body.accepted else "reject"
+    kw.reason = body.reason or kw.reason
+    await db.commit()
+    return {"id": kw.id, "reviewer_decision": kw.reviewer_decision}

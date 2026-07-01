@@ -40,12 +40,21 @@ export default function KeywordsView() {
         onSuccess: () => { setNewKw(""); qc.invalidateQueries({ queryKey: ["keywords", projectId] }); },
     });
 
+    const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
+    const [rejectPending, setRejectPending] = useState<string | null>(null);
+
     const decideMutation = useMutation({
-        mutationFn: ({ kw, accepted }: { kw: KeywordItem; accepted: boolean }) =>
-            annotationsApi.decideKeyword(projectId!, kw.id, {
-                project_id: projectId!, keyword: kw.keyword, accepted,
-            }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ["keywords", projectId] }),
+        mutationFn: ({ kw, accepted, reason }: { kw: KeywordItem; accepted: boolean; reason?: string }) => {
+            if (!accepted && !reason?.trim()) throw new Error("Motivo requerido para rechazar");
+            return annotationsApi.decideKeyword(projectId!, kw.id, {
+                project_id: projectId!, keyword: kw.keyword, accepted: accepted, reason,
+            });
+        },
+        onSuccess: (_, { kw }) => {
+            setRejectPending(null);
+            setRejectReason(prev => { const n = { ...prev }; delete n[kw.id]; return n; });
+            qc.invalidateQueries({ queryKey: ["keywords", projectId] });
+        },
     });
 
     return (
@@ -68,26 +77,49 @@ export default function KeywordsView() {
                 {isLoading && <div style={{ color: "var(--muted)" }}>Cargando...</div>}
 
                 {keywords?.map((kw) => (
-                    <div key={kw.id} style={S.row}>
-                        <span style={{ flex: 1, fontSize: 13, color: "var(--text)" }}>{kw.keyword}</span>
-                        <span style={{ fontSize: 10, color: "var(--muted)" }}>{kw.type}</span>
-                        <span style={{
-                            fontSize: 10, padding: "2px 8px", borderRadius: 100,
-                            background: kw.accepted ? "rgba(46,194,126,0.12)" : "rgba(224,82,82,0.12)",
-                            color: kw.accepted ? "var(--green)" : "var(--red)",
-                        }}>
-                            {kw.accepted ? "aceptada" : "rechazada"}
-                        </span>
-                        <input
-                            style={{ ...S.input, flex: 2, fontSize: 11 }}
-                            placeholder="Justificación..."
-                            defaultValue={kw.reason ?? ""}
-                            onBlur={(e) => decideMutation.mutate({ kw, accepted: kw.accepted ?? true, reason: e.target.value })}
-                        />
-                        <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--green)" }}
-                            onClick={() => decideMutation.mutate({ kw, accepted: true })}>✓</button>
-                        <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--red)" }}
-                            onClick={() => decideMutation.mutate({ kw, accepted: false })}>✗</button>
+                    <div key={kw.id} style={{ ...S.row, flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ flex: 1, fontSize: 13, color: "var(--text)" }}>{kw.keyword}</span>
+                            <span style={{ fontSize: 10, color: "var(--muted)" }}>{kw.type}</span>
+                            <span style={{
+                                fontSize: 10, padding: "2px 8px", borderRadius: 100,
+                                background: kw.accepted === true ? "rgba(46,194,126,0.12)" : kw.accepted === false ? "rgba(224,82,82,0.12)" : "rgba(107,112,128,0.12)",
+                                color: kw.accepted === true ? "var(--green)" : kw.accepted === false ? "var(--red)" : "var(--muted)",
+                            }}>
+                                {kw.accepted === true ? "aceptada" : kw.accepted === false ? "rechazada" : "pendiente"}
+                            </span>
+                            <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--green)" }}
+                                disabled={decideMutation.isPending}
+                                onClick={() => decideMutation.mutate({ kw, accepted: true, reason: kw.reason ?? undefined })}>✓</button>
+                            <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--red)" }}
+                                onClick={() => setRejectPending(rejectPending === kw.id ? null : kw.id)}>✗</button>
+                        </div>
+                        {/* Motivo existente (solo lectura si ya fue decidida) */}
+                        {kw.reason && rejectPending !== kw.id && (
+                            <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic", paddingLeft: 4 }}>
+                                Motivo: {kw.reason}
+                            </div>
+                        )}
+                        {/* Panel de rechazo con motivo obligatorio */}
+                        {rejectPending === kw.id && (
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <input
+                                    autoFocus
+                                    style={{ ...S.input, flex: 1, fontSize: 11 }}
+                                    placeholder="Motivo del rechazo (obligatorio)..."
+                                    value={rejectReason[kw.id] ?? ""}
+                                    onChange={(e) => setRejectReason(prev => ({ ...prev, [kw.id]: e.target.value }))}
+                                />
+                                <button
+                                    style={{ ...S.btn, background: "var(--red)", color: "#fff", opacity: rejectReason[kw.id]?.trim() ? 1 : 0.4 }}
+                                    disabled={!rejectReason[kw.id]?.trim() || decideMutation.isPending}
+                                    onClick={() => decideMutation.mutate({ kw, accepted: false, reason: rejectReason[kw.id] })}>
+                                    Confirmar rechazo
+                                </button>
+                                <button style={{ ...S.btn, background: "transparent", border: "1px solid var(--border)", color: "var(--muted)" }}
+                                    onClick={() => setRejectPending(null)}>Cancelar</button>
+                            </div>
+                        )}
                     </div>
                 ))}
 

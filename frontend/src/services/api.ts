@@ -119,6 +119,9 @@ export const annotationsApi = {
 
     decideKeyword: (projectId: string, keywordId: string, data: KeywordDecisionCreate) =>
         http.patch(`/projects/${projectId}/keywords/${keywordId}`, data).then((r) => r.data),
+
+    judgeKeyword: (projectId: string, keywordId: string, data: KeywordDecisionCreate) =>
+        http.patch(`/projects/${projectId}/keywords/${keywordId}/judge`, data).then((r) => r.data),
 };
 
 // ── Review ────────────────────────────────────────────────────────────────

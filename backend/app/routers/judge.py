@@ -34,7 +34,7 @@ async def judge_records(
             .options(selectinload(Annotation.annotator))   # ← fix: eager load en async
             .where(
                 Annotation.record_id == rec.id,
-                Annotation.annotation_type.in_(["sentiment", "pillar"]),
+                Annotation.annotation_type.in_(["sentiment", "pillar", "field"]),
             )
         )
         if annotation_type:
@@ -107,6 +107,23 @@ async def export_judged(
         select(Record).where(Record.project_id == project_id)
     )
     all_records = {r.id: r for r in rec_result.scalars().all()}
+    from backend.app.models.models import Project, Keyword
+    proj_result = await db.execute(select(Project).where(Project.id == project_id))
+    project = proj_result.scalar_one_or_none()
+
+    kw_result = await db.execute(select(Keyword).where(Keyword.project_id == project_id))
+    keywords_list = kw_result.scalars().all()
+
+    project_meta = {
+        "project_id":        project_id,
+        "project_name":      project.name if project else None,
+        "project_tema":      project.tema if project else None,
+        "project_desc_tema": project.desc_tema if project else None,
+        "project_scope":     project.population_scope if project else None,
+        "keywords_accepted": [k.keyword for k in keywords_list if k.accepted is True],
+        "keywords_rejected": [k.keyword for k in keywords_list if k.accepted is False],
+        "keywords_pending":  [k.keyword for k in keywords_list if k.accepted is None],
+    }
 
     ann_result = await db.execute(
         select(Annotation)
@@ -153,6 +170,7 @@ async def export_judged(
             "efectividad_llm":        rec.efectividad,
             "justicia_equidad_llm":   rec.justicia_equidad,
             "confianza_inst_llm":     rec.confianza_institucional,
+            **project_meta,
         }
 
         # ── Anotaciones humanas agrupadas por anotador ────────────────────

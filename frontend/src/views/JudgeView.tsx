@@ -1,7 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useRef } from "react";
-import { judgeApi } from "../services/api";
+import { judgeApi, annotationsApi, projectsApi } from "../services/api";
+import type { KeywordItem } from "../types";
 
 const sentLabel = (v?: number) => ({ 1: "↑ Positivo", "-1": "↓ Negativo", 0: "→ Neutro", 2: "✕ No relac." }[String(v ?? "")] ?? "—");
 const sentColor = (v?: number) => ({ 1: "var(--green)", "-1": "var(--red)", 0: "var(--muted)", 2: "var(--border2)" }[String(v ?? "")] ?? "var(--muted)");
@@ -24,6 +25,7 @@ const SENT_OPTS = [
 export default function JudgeView() {
     const { id: projectId } = useParams<{ id: string }>();
     const qc = useQueryClient();
+
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
@@ -62,6 +64,32 @@ export default function JudgeView() {
         queryFn: () => judgeApi.records(projectId!),
         enabled: !!projectId,
     });
+    const { data: keywords } = useQuery({
+        queryKey: ["keywords", projectId],
+        queryFn: () => annotationsApi.listKeywords(projectId!) as Promise<KeywordItem[]>,
+        enabled: !!projectId,
+    });
+
+    const { data: project } = useQuery({
+        queryKey: ["project", projectId],
+        queryFn: () => projectsApi.get(projectId!),
+        enabled: !!projectId,
+    });
+
+    const judgeKwMutation = useMutation({
+        mutationFn: ({ kwId, accepted, reason }: { kwId: string; accepted: boolean; reason?: string }) =>
+            annotationsApi.judgeKeyword(projectId!, kwId, {
+                project_id: projectId!, keyword: "", accepted, reason,
+            }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["keywords", projectId] });
+            showToast("Decisión de keyword guardada ✓");
+        },
+        onError: () => showToast("Error al guardar keyword", false),
+    });
+
+    const [kwRejectReason, setKwRejectReason] = useState<Record<string, string>>({});
+    const [kwRejectPending, setKwRejectPending] = useState<string | null>(null);
 
     const decideMutation = useMutation({
         mutationFn: ({ annotationId, finalValue }: { annotationId: string; finalValue: number }) =>
@@ -137,9 +165,27 @@ export default function JudgeView() {
                                     )}
                                     {ann.pillar && <div style={{ fontSize: 11, color: "var(--teal)" }}>{ann.pillar}: {ann.corrected_value}</div>}
                                     {ann.correction_reason && <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 3 }}>{ann.correction_reason}</div>}
+                                    {annotations.filter(a => a.pillar === null && a.corrected_sentiment === undefined && (a as any).field_name).length > 0 && (
+                                        <div style={{ marginTop: 8, marginBottom: 8 }}>
+                                            <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 4 }}>Campos corregidos:</div>
+                                            {annotations
+                                                .filter(a => (a as any).field_name)
+                                                .map(a => (
+                                                    <div key={a.id} style={{ fontSize: 11, color: "var(--muted)", display: "flex", gap: 6 }}>
+                                                        <span style={{ color: "var(--teal)" }}>{(a as any).field_name}</span>
+                                                        <span>👤 {a.annotator}:</span>
+                                                        <span style={{ color: "var(--text)" }}>{(a as any).corrected_text ?? "—"}</span>
+                                                        {a.correction_reason && <span style={{ fontStyle: "italic" }}>({a.correction_reason})</span>}
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
+
+
 
                         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10 }}>
                             <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 7, fontWeight: 500 }}>⚖️ Tu decisión final:</div>
@@ -173,6 +219,55 @@ export default function JudgeView() {
                         </div>
                     </div>
                 ))}
+                {/* ── SECCIÓN KEYWORDS DEL PROYECTO ── */}
+                {keywords && keywords.length > 0 && (
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--amber)", marginBottom: 10 }}>
+                            🔑 Keywords del proyecto — Decisión final del juez
+                        </div>
+                        {keywords.map((kw) => (
+                            <div key={kw.id} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <span style={{ flex: 1, fontSize: 13, color: "var(--text)" }}>{kw.keyword}</span>
+                                    <span style={{ fontSize: 10, color: "var(--muted)" }}>{kw.type}</span>
+                                    {/* Estado de anotadores */}
+                                    <span style={{ fontSize: 10, color: kw.accepted === true ? "var(--green)" : kw.accepted === false ? "var(--red)" : "var(--muted)" }}>
+                                        Anot: {kw.accepted === true ? "✓ aceptada" : kw.accepted === false ? "✗ rechazada" : "—"}
+                                    </span>
+                                    {/* Decisión del juez */}
+                                    <span style={{ fontSize: 10, fontWeight: 600, color: kw.reviewer_decision === "accept" ? "var(--green)" : kw.reviewer_decision === "reject" ? "var(--red)" : "var(--amber)" }}>
+                                        Juez: {kw.reviewer_decision === "accept" ? "✓" : kw.reviewer_decision === "reject" ? "✗" : "pendiente"}
+                                    </span>
+                                    <button style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--green)", fontSize: 11, cursor: "pointer" }}
+                                        onClick={() => judgeKwMutation.mutate({ kwId: kw.id, accepted: true })}>✓</button>
+                                    <button style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--red)", fontSize: 11, cursor: "pointer" }}
+                                        onClick={() => setKwRejectPending(kwRejectPending === kw.id ? null : kw.id)}>✗</button>
+                                </div>
+                                {kw.reason && kwRejectPending !== kw.id && (
+                                    <div style={{ fontSize: 11, color: "var(--muted)", fontStyle: "italic" }}>Motivo anot: {kw.reason}</div>
+                                )}
+                                {kwRejectPending === kw.id && (
+                                    <div style={{ display: "flex", gap: 6 }}>
+                                        <input autoFocus
+                                            style={{ flex: 1, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11 }}
+                                            placeholder="Motivo del rechazo (obligatorio)..."
+                                            value={kwRejectReason[kw.id] ?? ""}
+                                            onChange={(e) => setKwRejectReason(prev => ({ ...prev, [kw.id]: e.target.value }))} />
+                                        <button
+                                            disabled={!kwRejectReason[kw.id]?.trim() || judgeKwMutation.isPending}
+                                            style={{ padding: "5px 10px", borderRadius: "var(--r)", background: "var(--red)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer", opacity: kwRejectReason[kw.id]?.trim() ? 1 : 0.4 }}
+                                            onClick={() => judgeKwMutation.mutate({ kwId: kw.id, accepted: false, reason: kwRejectReason[kw.id] })}>
+                                            Confirmar
+                                        </button>
+                                        <button style={{ padding: "5px 10px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 11, cursor: "pointer" }}
+                                            onClick={() => setKwRejectPending(null)}>Cancelar</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
             </div>
 
             {toast && (
