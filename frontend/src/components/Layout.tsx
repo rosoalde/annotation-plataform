@@ -71,6 +71,7 @@ export default function Layout() {
                         {/* <NavItem to={`/projects/${id}/sentiment`}>💬 Sentimiento</NavItem>
                         <NavItem to={`/projects/${id}/pillars`}>🏛 Pilares</NavItem> */}
                         <NavItem to={`/projects/${id}/anotar`}>✍ Anotar</NavItem>
+                        <NavItem to={`/projects/${id}/keywords`}>🔑 Keywords</NavItem>
                         {canReview && (
                             <>
                                 <div style={S.navSection}>Revisión</div>
@@ -81,7 +82,7 @@ export default function Layout() {
                             <>
                                 <div style={S.navSection}>Datos</div>
                                 <NavItem to={`/projects/${id}/import`}>⬆ Importar CSV</NavItem>
-                                <NavItem to={`/projects/${id}/keywords`}>🔑 Keywords</NavItem>
+
                             </>
                         )}
                         {isJudge && (
