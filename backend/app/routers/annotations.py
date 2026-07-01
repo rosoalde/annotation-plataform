@@ -146,6 +146,7 @@ async def save_field(
     )
     db.add(ann)
     await _release_lock(db, body.record_id, current_user.id)
+    await _update_record_status(db, body.record_id)
     await db.commit()
     await db.refresh(ann)
     return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,

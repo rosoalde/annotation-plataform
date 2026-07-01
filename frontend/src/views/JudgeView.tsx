@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { judgeApi } from "../services/api";
 
 const sentLabel = (v?: number) => ({ 1: "↑ Positivo", "-1": "↓ Negativo", 0: "→ Neutro", 2: "✕ No relac." }[String(v ?? "")] ?? "—");
@@ -26,6 +26,31 @@ export default function JudgeView() {
     const qc = useQueryClient();
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
     const [decisions, setDecisions] = useState<Record<string, number>>({});
+
+    const [exporting, setExporting] = useState(false);
+    const downloadRef = useRef<HTMLAnchorElement>(null);
+
+    const handleExport = async (format: "jsonl" | "csv", mode: "judge" | "annotators" | "all") => {
+        if (!projectId) return;
+        setExporting(true);
+        try {
+            const result = await judgeApi.export(projectId, format, mode);
+            const blob = new Blob([result.data], {
+                type: format === "csv" ? "text/csv;charset=utf-8;" : "application/jsonl",
+            });
+            const url = URL.createObjectURL(blob);
+            const a = downloadRef.current!;
+            a.href = url;
+            a.download = `export_${mode}_${projectId.slice(0, 8)}.${format}`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast(`Descargado: ${result.count} registros (${mode})`);
+        } catch {
+            showToast("Error al exportar", false);
+        } finally {
+            setExporting(false);
+        }
+    };
 
     const showToast = useCallback((msg: string, ok = true) => {
         setToast({ msg, ok });
@@ -57,6 +82,26 @@ export default function JudgeView() {
                 <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--border)", color: "var(--muted)", fontFamily: "monospace" }}>
                     {data?.length ?? 0} registros
                 </span>
+                <a ref={downloadRef} style={{ display: "none" }} />
+                <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                    <span style={{ fontSize: 10, color: "var(--muted)", alignSelf: "center" }}>Exportar:</span>
+                    {(["judge", "annotators", "all"] as const).map((mode) => (
+                        <div key={mode} style={{ display: "flex", gap: 3 }}>
+                            <button
+                                disabled={exporting}
+                                onClick={() => handleExport("jsonl", mode)}
+                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 10, cursor: "pointer" }}>
+                                {mode} JSONL
+                            </button>
+                            <button
+                                disabled={exporting}
+                                onClick={() => handleExport("csv", mode)}
+                                style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 10, cursor: "pointer" }}>
+                                CSV
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
             <div style={S.content}>
                 {!data?.length && (

@@ -138,6 +138,6 @@ export const judgeApi = {
     decide: (annotationId: string, finalValue: number, reason?: string) =>
         http.post(`/judge/decide/${annotationId}`, { annotation_id: annotationId, final_value: finalValue, reason }).then((r) => r.data),
 
-    export: (projectId: string, format: "jsonl" | "csv" = "jsonl") =>
-        http.get(`/judge/export/${projectId}`, { params: { format } }).then((r) => r.data),
+    export: (projectId: string, format: "jsonl" | "csv" = "jsonl", mode: "judge" | "annotators" | "all" = "all") =>
+        http.get(`/judge/export/${projectId}`, { params: { format, mode } }).then((r) => r.data),
 };
