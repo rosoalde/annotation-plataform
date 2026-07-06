@@ -16,13 +16,13 @@ const sentColor = (v?: number) => ({ 1: "#2ec27e", "-1": "#e05252", 0: "#6b7080"
 const platColor = (p?: string) => ({ reddit: "#ff4500", bluesky: "#0085ff", youtube: "#ff0000", twitter: "#1da1f2" }[(p ?? "").toLowerCase()] ?? "#6b7080");
 const platIcon = (p?: string) => ({ reddit: "🔴", bluesky: "🔵", youtube: "▶", twitter: "🐦" }[(p ?? "").toLowerCase()] ?? "🌐");
 
-const PILLARS = [
+const PILARS = [
     { key: "legitimacion", label: "Legitimación", justifKey: "justif_legitimacion", color: "#7a9bf5" },
     { key: "efectividad", label: "Efectividad", justifKey: "justif_efectividad", color: "#2ec27e" },
     { key: "justicia_equidad", label: "Justicia y equidad", justifKey: "justif_justicia_equidad", color: "#28bfb0" },
     { key: "confianza_institucional", label: "Confianza instit.", justifKey: "justif_confianza_institucional", color: "#9b72ef" },
 ] as const;
-const pillarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
+const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
 
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.
@@ -44,10 +44,10 @@ type RecordAnn = {
     sentiment_reason?: string;
     topic?: string;
     topic_reason?: string;
-    pillars: Record<string, { value?: number; reason?: string }>;
+    pilars: Record<string, { value?: number; reason?: string }>;
     fields: Record<string, FieldState>;
 };
-const emptyAnn = (): RecordAnn => ({ pillars: {}, fields: {} });
+const emptyAnn = (): RecordAnn => ({ pilars: {}, fields: {} });
 
 export default function AnnotateView() {
     const { id: projectId } = useParams<{ id: string }>();
@@ -101,12 +101,12 @@ export default function AnnotateView() {
                 }),
             ];
 
-            for (const p of PILLARS) {
-                const pa = ann.pillars[p.key];
+            for (const p of PILARS) {
+                const pa = ann.pilars[p.key];
                 if (!pa || pa.value === undefined) continue;
                 const llmVal = (rec as any)[p.key] as number | undefined;
-                calls.push(annotationsApi.savePillar(projectId!, {
-                    record_id: rec.id, project_id: projectId!, pillar: p.key,
+                calls.push(annotationsApi.savePilar(projectId!, {
+                    record_id: rec.id, project_id: projectId!, pilar: p.key,
                     original_value: llmVal ?? 2, corrected_value: pa.value,
                     is_correction: pa.value !== llmVal, correction_reason: pa.reason ?? undefined,
                 }));
@@ -140,10 +140,10 @@ export default function AnnotateView() {
     const getAnn = (recId: string) => annotations[recId] ?? emptyAnn();
     const setAnn = (recId: string, patch: Partial<RecordAnn>) =>
         setAnnotations((prev) => ({ ...prev, [recId]: { ...emptyAnn(), ...prev[recId], ...patch } }));
-    const setPillar = (recId: string, key: string, patch: { value?: number; reason?: string }) =>
+    const setPilar = (recId: string, key: string, patch: { value?: number; reason?: string }) =>
         setAnnotations((prev) => {
             const cur = prev[recId] ?? emptyAnn();
-            return { ...prev, [recId]: { ...cur, pillars: { ...cur.pillars, [key]: { ...cur.pillars[key], ...patch } } } };
+            return { ...prev, [recId]: { ...cur, pilars: { ...cur.pilars, [key]: { ...cur.pilars[key], ...patch } } } };
         });
     const setField = (recId: string, key: string, patch: FieldState) =>
         setAnnotations((prev) => {
@@ -155,8 +155,8 @@ export default function AnnotateView() {
         const ann = getAnn(rec.id);
         const sentCorrected = (ann.sentiment ?? rec.sentiment_llm ?? 2) !== rec.sentiment_llm;
         if (sentCorrected && !ann.sentiment_reason) { showToast("Falta el motivo de la corrección de sentimiento", "warn"); return; }
-        for (const p of PILLARS) {
-            const pa = ann.pillars[p.key];
+        for (const p of PILARS) {
+            const pa = ann.pilars[p.key];
             if (pa && pa.value !== undefined && pa.value !== (rec as any)[p.key] && !pa.reason) {
                 showToast(`Falta el motivo para "${p.label}"`, "warn"); return;
             }
@@ -293,9 +293,9 @@ export default function AnnotateView() {
                                     {/* Pilares */}
                                     <div style={S.sectionLabel}>Pilares de aceptación</div>
                                     <div style={S.fieldGrid}>
-                                        {PILLARS.map((p) => {
+                                        {PILARS.map((p) => {
                                             const llmVal = (rec as any)[p.key] as number | undefined;
-                                            const pa = ann.pillars[p.key] ?? {};
+                                            const pa = ann.pilars[p.key] ?? {};
                                             const sel = pa.value !== undefined ? pa.value : llmVal;
                                             const justif = (rec as any)[p.justifKey] as string | undefined;
                                             return (
@@ -306,14 +306,14 @@ export default function AnnotateView() {
                                                         {[{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }].map((btn) => (
                                                             <button key={btn.v}
                                                                 style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
-                                                                onClick={() => setPillar(rec.id, p.key, { value: btn.v })}>
+                                                                onClick={() => setPilar(rec.id, p.key, { value: btn.v })}>
                                                                 {btn.l}
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <div style={S.iaTag}>IA: {pillarLabel(llmVal)}</div>
+                                                    <div style={S.iaTag}>IA: {pilarLabel(llmVal)}</div>
                                                     {sel !== llmVal && (
-                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPillar(rec.id, p.key, { reason: v })} />
+                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
                                                     )}
                                                 </div>
                                             );

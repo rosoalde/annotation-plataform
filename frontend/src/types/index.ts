@@ -2,7 +2,7 @@
 export type UserRole = "annotator" | "reviewer" | "judge" | "admin";
 export type UserStatus = "pending" | "approved" | "rejected";
 export type RecordStatus = "pending" | "annotated_partial" | "annotated" | "judged";
-export type AnnotationType = "sentiment" | "pillar" | "keyword";
+export type AnnotationType = "sentiment" | "pilar" | "keyword";
 export type ReviewDecision = "accept" | "reject";
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -135,10 +135,10 @@ export interface SentimentAnnotationCreate {
     expected_version?: number;
 }
 
-export interface PillarAnnotationCreate {
+export interface PilarAnnotationCreate {
     record_id: string;
     project_id: string;
-    pillar: string;
+    pilar: string;
     original_value: number;
     corrected_value: number;
     is_correction: boolean;
@@ -204,7 +204,7 @@ export interface ReviewAnnotation {
     corrected_topic?: string;
     original_value?: number;
     corrected_value?: number;
-    pillar?: string;
+    pilar?: string;
     is_correction: boolean;
     reviewer_decision?: ReviewDecision;
     created_at: string;
@@ -219,7 +219,7 @@ export interface JudgeAnnotation {
     correction_reason?: string;
     corrected_topic?: string;
     corrected_value?: number;
-    pillar?: string;
+    pilar?: string;
     field_name?: string;
     corrected_text?: string;
     is_correction: boolean;

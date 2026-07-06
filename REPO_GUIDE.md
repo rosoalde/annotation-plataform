@@ -78,7 +78,7 @@ annotation-plataform/
             ├── ImportView.tsx       ← importar CSV en 3 pasos
             ├── KeywordsView.tsx     ← gestionar términos de búsqueda
             ├── SentimentView.tsx    ← anotar sentimiento + topic
-            ├── PillarsView.tsx      ← anotar 4 pilares de aceptación
+            ├── PilarsView.tsx      ← anotar 4 pilares de aceptación
             ├── ReviewView.tsx       ← revisar correcciones del equipo
             ├── JudgeView.tsx        ← decidir etiqueta final + exportar
             └── AdminView.tsx        ← aprobar/rechazar cuentas de usuario
@@ -176,7 +176,7 @@ Clases principales:
 - `RecordOut` — lo que devuelve la API al listar registros (incluye todos los campos de análisis LLM)
 - `RecordImportItem` — esquema de cada fila del CSV; define qué columnas del CSV se leen
 - `CsvImportResult` — resultado de una importación: `imported`, `skipped`, `errors`
-- `SentimentAnnotationCreate` / `PillarAnnotationCreate` / `FieldAnnotationCreate` — guardar anotaciones
+- `SentimentAnnotationCreate` / `PilarAnnotationCreate` / `FieldAnnotationCreate` — guardar anotaciones
 - `KeywordDecisionCreate` — aceptar/rechazar términos
 
 **¿Cuándo lo tocas?** Cuando añades un campo nuevo: hay que añadirlo en `RecordOut` (para que la API lo devuelva) y en `RecordImportItem` (para que el CSV lo reconozca).
@@ -221,7 +221,7 @@ El router más complejo:
 
 ### `backend/app/routers/annotations.py`
 - `POST /api/projects/{id}/annotations/sentiment` — guarda anotación de sentimiento. Libera el lock automáticamente. Actualiza `record.status` a `annotated_partial` (1 anotador) o `annotated` (2 anotadores distintos).
-- `POST /api/projects/{id}/annotations/pillar` — igual para pilares.
+- `POST /api/projects/{id}/annotations/pilar` — igual para pilares.
 - `POST /api/projects/{id}/annotations/field` — guarda corrección de cualquier campo de texto del registro (posicion, lang, world_country, etc.) usando los campos genéricos `field_name`/`original_text`/`corrected_text`.
 - `POST /api/projects/{id}/keywords` — añade un término de búsqueda.
 - `GET /api/projects/{id}/keywords` — lista todos los términos del proyecto.
@@ -266,7 +266,7 @@ Define todas las rutas de la aplicación con React Router:
 | `/login` | LoginView |
 | `/projects` | ProjectsView |
 | `/projects/:id/sentiment` | SentimentView |
-| `/projects/:id/pillars` | PillarsView |
+| `/projects/:id/pilars` | PilarsView |
 | `/projects/:id/review` | ReviewView |
 | `/projects/:id/judge` | JudgeView |
 | `/projects/:id/import` | ImportView |
@@ -372,7 +372,7 @@ Vista principal de anotación de sentimiento. Para cada registro:
 
 ---
 
-### `frontend/src/views/PillarsView.tsx`
+### `frontend/src/views/PilarsView.tsx`
 Igual que SentimentView pero para los 4 pilares de aceptación:
 - **Legitimación** — ¿Es legal/legítima la medida?
 - **Efectividad** — ¿Funcionará?

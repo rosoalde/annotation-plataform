@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type {
     TokenResponse, RegisterResponse, Project, RecordListResponse, AnnotationResponse,
-    SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate, FieldAnnotationCreate,
+    SentimentAnnotationCreate, PilarAnnotationCreate, KeywordDecisionCreate, FieldAnnotationCreate,
     ReviewAnnotation, ReviewDecision, JudgeRecord, ProjectStats,
     PendingUser, AppUser, UserRole, CsvImportResult,
 } from "../types";
@@ -105,8 +105,8 @@ export const annotationsApi = {
     saveSentiment: (projectId: string, data: SentimentAnnotationCreate) =>
         http.post<AnnotationResponse>(`/projects/${projectId}/annotations/sentiment`, data).then((r) => r.data),
 
-    savePillar: (projectId: string, data: PillarAnnotationCreate) =>
-        http.post<AnnotationResponse>(`/projects/${projectId}/annotations/pillar`, data).then((r) => r.data),
+    savePilar: (projectId: string, data: PilarAnnotationCreate) =>
+        http.post<AnnotationResponse>(`/projects/${projectId}/annotations/pilar`, data).then((r) => r.data),
 
     saveKeyword: (projectId: string, data: KeywordDecisionCreate) =>
         http.post(`/projects/${projectId}/keywords`, data).then((r) => r.data),

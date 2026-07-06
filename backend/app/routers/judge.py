@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_db
@@ -22,7 +22,7 @@ async def judge_records(
     current_user: User              = Depends(require_role("judge", "admin")),
 ):
     rec_result = await db.execute(
-        select(Record).where(Record.project_id == project_id, Record.status == "annotated")
+        select(Record).where(Record.project_id == project_id, Record.status.in_(["annotated", "judged"]))
         .offset(offset).limit(limit)
     )
     records = rec_result.scalars().all()
@@ -34,7 +34,7 @@ async def judge_records(
             .options(selectinload(Annotation.annotator))   # ← fix: eager load en async
             .where(
                 Annotation.record_id == rec.id,
-                Annotation.annotation_type.in_(["sentiment", "pillar", "field"]),
+                Annotation.annotation_type.in_(["sentiment", "pilar", "field"]),
             )
         )
         if annotation_type:
@@ -48,7 +48,7 @@ async def judge_records(
                 annotation_type=a.annotation_type,
                 corrected_sentiment=a.corrected_sentiment, correction_reason=a.correction_reason,
                 corrected_topic=a.corrected_topic, corrected_value=a.corrected_value,
-                pillar=a.pillar, field_name=a.field_name, corrected_text=a.corrected_text,
+                pilar=a.pilar, field_name=a.field_name, corrected_text=a.corrected_text,
                 is_correction=a.is_correction, judge_final_value=a.judge_final_value,
             )
             for a in anns
@@ -96,15 +96,50 @@ async def judge_decide(
         raise HTTPException(404, "Annotation not found")
 
     ann.judge_final_value = body.final_value
+    await db.flush()   # persiste el valor actual antes de contar
 
-    rec_r  = await db.execute(select(Record).where(Record.id == ann.record_id))
-    record = rec_r.scalar_one_or_none()
-    if record:
-        record.status = "judged"
+    # Solo marca como "judged" cuando TODAS las correcciones del registro
+    # tienen una decisión final del juez.
+    pending_r = await db.execute(
+        select(func.count()).where(
+            Annotation.record_id == ann.record_id,
+            Annotation.is_correction == True,
+            Annotation.judge_final_value == None,
+        )
+    )
+    pending = pending_r.scalar() or 0
+
+    if pending == 0:
+        rec_r = await db.execute(select(Record).where(Record.id == ann.record_id))
+        record = rec_r.scalar_one_or_none()
+        if record:
+            record.status = "judged"
 
     await db.commit()
-    return {"ok": True, "final_value": body.final_value}
+    return {"ok": True, "final_value": body.final_value, "pending_decisions": pending}
 
+
+
+@router.delete("/reset/{project_id}")
+async def reset_judge_decisions(
+    project_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("judge", "admin")),
+):
+    """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
+    from sqlalchemy import update as sa_update
+    await db.execute(
+        sa_update(Annotation)
+        .where(Annotation.project_id == project_id, Annotation.judge_final_value != None)
+        .values(judge_final_value=None)
+    )
+    await db.execute(
+        sa_update(Record)
+        .where(Record.project_id == project_id, Record.status == "judged")
+        .values(status="annotated")
+    )
+    await db.commit()
+    return {"ok": True, "message": "Decisiones del juez eliminadas"}
 @router.get("/export/{project_id}")
 async def export_judged(
     project_id: str,
@@ -206,8 +241,8 @@ async def export_judged(
         # ── Anotaciones humanas agrupadas por anotador ────────────────────
         # Sentimiento y topic (annotation_type="sentiment")
         sent_anns = [a for a in anns if a.annotation_type == "sentiment"]
-        # Pilares (annotation_type="pillar")
-        pillar_anns = [a for a in anns if a.annotation_type == "pillar"]
+        # Pilares (annotation_type="pilar")
+        pilar_anns = [a for a in anns if a.annotation_type == "pilar"]
         # Campos de texto (annotation_type="field")
         field_anns = [a for a in anns if a.annotation_type == "field"]
         # Decisión del juez: último judge_final_value en anotaciones de sentimiento
@@ -223,13 +258,13 @@ async def export_judged(
                     break
 
             # Recoger pilares: si hay decisión del juez tomar ese anotador; si no, votar por mayoría
-            pillar_values: dict = {}
-            for p_ann in pillar_anns:
-                key = p_ann.pillar
-                if key not in pillar_values:
-                    pillar_values[key] = []
-                pillar_values[key].append(p_ann.corrected_value)
-            pillar_consensus = {k: max(set(v), key=v.count) for k, v in pillar_values.items()}
+            pilar_values: dict = {}
+            for p_ann in pilar_anns:
+                key = p_ann.pilar
+                if key not in pilar_values:
+                    pilar_values[key] = []
+                pilar_values[key].append(p_ann.corrected_value)
+            pilar_consensus = {k: max(set(v), key=v.count) for k, v in pilar_values.items()}
 
             # Recoger campos de texto: último valor humano anotado para cada campo
             field_values: dict = {}
@@ -250,10 +285,10 @@ async def export_judged(
                 "human_world_region":    field_values.get("world_region"),
                 "human_world_city":      field_values.get("world_city"),
                 "human_codigo_pais":     field_values.get("codigo_pais"),
-                "legitimacion_human":    pillar_consensus.get("legitimacion"),
-                "efectividad_human":     pillar_consensus.get("efectividad"),
-                "justicia_equidad_human": pillar_consensus.get("justicia_equidad"),
-                "confianza_inst_human":  pillar_consensus.get("confianza_institucional"),
+                "legitimacion_human":    pilar_consensus.get("legitimacion"),
+                "efectividad_human":     pilar_consensus.get("efectividad"),
+                "justicia_equidad_human": pilar_consensus.get("justicia_equidad"),
+                "confianza_inst_human":  pilar_consensus.get("confianza_institucional"),
             }
             rows_judge.append(row)
 
@@ -272,25 +307,25 @@ async def export_judged(
                     "correction_reason":   a.correction_reason,
                     "reviewer_decision":   a.reviewer_decision,
                     "judge_final_value":   a.judge_final_value,
-                    "pillar":             None,
+                    "pilar":             None,
                     "field_name":         None,
                     "corrected_value":    None,
                     "corrected_text":     None,
                 })
             # Una fila por cada anotación de pilar
-            for a in pillar_anns:
+            for a in pilar_anns:
                 rows_annotators.append({
                     **base,
                     "export_mode":       "annotator",
                     "annotator":          a.annotator.username if a.annotator else "?",
-                    "annotation_type":    "pillar",
+                    "annotation_type":    "pilar",
                     "corrected_sentiment": None,
                     "corrected_topic":    None,
                     "is_correction":      a.is_correction,
                     "correction_reason":  a.correction_reason,
                     "reviewer_decision":  a.reviewer_decision,
                     "judge_final_value":  a.judge_final_value,
-                    "pillar":             a.pillar,
+                    "pilar":             a.pilar,
                     "field_name":         None,
                     "corrected_value":    a.corrected_value,
                     "corrected_text":     None,
@@ -308,7 +343,7 @@ async def export_judged(
                     "correction_reason":  a.correction_reason,
                     "reviewer_decision":  a.reviewer_decision,
                     "judge_final_value":  None,
-                    "pillar":             None,
+                    "pilar":             None,
                     "field_name":         a.field_name,
                     "corrected_value":    None,
                     "corrected_text":     a.corrected_text,

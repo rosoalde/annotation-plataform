@@ -69,7 +69,7 @@ export default function Layout() {
                     <>
                         <div style={S.navSection}>Anotar</div>
                         {/* <NavItem to={`/projects/${id}/sentiment`}>💬 Sentimiento</NavItem>
-                        <NavItem to={`/projects/${id}/pillars`}>🏛 Pilares</NavItem> */}
+                        <NavItem to={`/projects/${id}/pilars`}>🏛 Pilares</NavItem> */}
                         <NavItem to={`/projects/${id}/anotar`}>✍ Anotar</NavItem>
                         <NavItem to={`/projects/${id}/keywords`}>🔑 Keywords</NavItem>
                         {canReview && (

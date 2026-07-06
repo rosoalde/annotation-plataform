@@ -6,7 +6,7 @@
  *   3. Confirmar importación → llama POST /records/import-csv
  *
  * Solo accesible para admin y reviewer (controlado por la ruta en main.tsx).
- * Sigue el mismo patrón visual que SentimentView / PillarsView.
+ * Sigue el mismo patrón visual que SentimentView / PilarsView.
  */
 import { useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";

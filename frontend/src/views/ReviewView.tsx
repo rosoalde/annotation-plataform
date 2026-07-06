@@ -77,15 +77,15 @@ export default function ReviewView() {
               <div style={{ background: "var(--bg)", padding: 10, borderRadius: "var(--r)", border: "1px solid var(--border)" }}>
                 <div style={{ color: "var(--muted)", marginBottom: 4 }}>🤖 Original (LLM)</div>
                 {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.original_sentiment)} | {ann.original_topic || "—"}</div>}
-                {ann.annotation_type === "pillar" && <div>{ann.pillar}: {ann.original_value}</div>}
+                {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.original_value}</div>}
                 {ann.annotation_type === "keyword" && <div>{ann.corrected_topic}</div>}
                 {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
               </div>
               <div style={{ background: "rgba(78,123,239,0.08)", padding: 10, borderRadius: "var(--r)", border: "1px solid rgba(78,123,239,0.25)" }}>
                 <div style={{ color: "var(--accent2)", marginBottom: 4 }}>👤 Corrección humana</div>
                 {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.corrected_sentiment)} | {ann.corrected_topic || "—"}</div>}
-                {ann.annotation_type === "pillar" && <div>{ann.pillar}: {ann.corrected_value}</div>}
-                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
+                {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.corrected_value}</div>}
+                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.corrected_text || "—"}</div>}
                 {ann.annotation_type === "keyword" && <div>{ann.is_correction ? "Rechazada" : "Aceptada"}</div>}
               </div>
             </div>

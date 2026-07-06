@@ -15,7 +15,7 @@ from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, require_role
 from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
 from backend.app.schemas.schemas import (
-    SentimentAnnotationCreate, PillarAnnotationCreate, KeywordDecisionCreate,
+    SentimentAnnotationCreate, PilarAnnotationCreate, KeywordDecisionCreate,
     AnnotationResponse, FieldAnnotationCreate
 )
 
@@ -33,7 +33,7 @@ async def _update_record_status(db: AsyncSession, record_id: str):
     r = await db.execute(
         select(func.count(distinct(Annotation.annotator_id))).where(
             Annotation.record_id == record_id,
-            Annotation.annotation_type.in_(["sentiment", "pillar"]),
+            Annotation.annotation_type.in_(["sentiment", "pilar"]),
         )
     )
     n      = r.scalar() or 0
@@ -68,16 +68,16 @@ async def save_sentiment(
                                is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
 
 
-@router.post("/{project_id}/annotations/pillar", response_model=AnnotationResponse)
-async def save_pillar(
+@router.post("/{project_id}/annotations/pilar", response_model=AnnotationResponse)
+async def save_pilar(
     project_id: str,
-    body: PillarAnnotationCreate,
+    body: PilarAnnotationCreate,
     db: AsyncSession   = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     ann = Annotation(
         record_id=body.record_id, project_id=project_id, annotator_id=current_user.id,
-        annotation_type="pillar", pillar=body.pillar,
+        annotation_type="pilar", pilar=body.pilar,
         original_value=body.original_value, corrected_value=body.corrected_value,
         is_correction=body.is_correction, correction_reason=body.correction_reason,
     )

@@ -198,10 +198,10 @@ class SentimentAnnotationCreate(BaseModel):
     topic_reason: Optional[str] = None
     expected_version: Optional[int] = None
 
-class PillarAnnotationCreate(BaseModel):
+class PilarAnnotationCreate(BaseModel):
     record_id: str
     project_id: str
-    pillar: str
+    pilar: str
     original_value: int
     corrected_value: int
     is_correction: bool
@@ -259,10 +259,18 @@ class ReviewAnnotationOut(BaseModel):
     field_name: Optional[str] = None
     original_text: Optional[str] = None
     corrected_text: Optional[str] = None
-    pillar: Optional[str]
+    pilar: Optional[str]
     is_correction: bool
     reviewer_decision: Optional[str]
     created_at: datetime
+    # Contexto del registro (para el revisor)
+    record_content: Optional[str] = None
+    record_platform: Optional[str] = None
+    record_tipo: Optional[str] = None
+    record_fecha: Optional[str] = None
+    record_url_post: Optional[str] = None
+    record_cuerpo_padre: Optional[str] = None
+    record_titulo_padre: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -281,7 +289,7 @@ class JudgeAnnotationOut(BaseModel):
     correction_reason: Optional[str]
     corrected_topic: Optional[str]
     corrected_value: Optional[int]
-    pillar: Optional[str]
+    pilar: Optional[str]
     field_name: Optional[str] = None      
     corrected_text: Optional[str] = None
     is_correction: bool

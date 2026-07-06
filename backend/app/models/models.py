@@ -11,7 +11,7 @@ Tables:
   records          – data records to annotate (now includes world_data + lang,
                      filled by the LLM re-analysis pass and imported from CSV)
   record_locks     – pessimistic lock table (30-min TTL)
-  annotations      – all human annotations (sentiment + pillar + keyword)
+  annotations      – all human annotations (sentiment + pilar + keyword)
 """
 import uuid
 from datetime import datetime
@@ -180,7 +180,7 @@ class RecordLock(Base):
 class Annotation(Base):
     """
     Stores every human annotation.
-    annotation_type: 'sentiment' | 'pillar' | 'keyword'
+    annotation_type: 'sentiment' | 'pilar' | 'keyword'
     """
     __tablename__ = "annotations"
 
@@ -188,7 +188,7 @@ class Annotation(Base):
     record_id       = Column(String, ForeignKey("records.id"), nullable=False)
     project_id      = Column(String, ForeignKey("projects.id"), nullable=False)
     annotator_id    = Column(String, ForeignKey("users.id"),    nullable=False)
-    annotation_type = Column(String(20), nullable=False)   # sentiment | pillar | keyword
+    annotation_type = Column(String(20), nullable=False)   # sentiment | pilar | keyword
 
     # Sentiment fields
     original_sentiment  = Column(Integer, nullable=True)
@@ -197,8 +197,8 @@ class Annotation(Base):
     corrected_topic       = Column(String(200), nullable=True)
     topic_reason          = Column(Text, nullable=True)
 
-    # Pillar fields
-    pillar          = Column(String(50), nullable=True)
+    # Pilar fields
+    pilar          = Column(String(50), nullable=True)
     original_value  = Column(Integer, nullable=True)
     corrected_value = Column(Integer, nullable=True)
 

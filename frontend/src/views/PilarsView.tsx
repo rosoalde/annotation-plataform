@@ -5,14 +5,14 @@ import { recordsApi, annotationsApi, LockConflictError } from "../services/api";
 import type { Record as AnnotRecord } from "../types";
 import ProjectContextBar from "../components/ProjectContextBar";
 
-const PILLARS = [
+const PILARS = [
     { key: "legitimacion", label: "Legitimación", color: "var(--accent2)" },
     { key: "efectividad", label: "Efectividad", color: "var(--green)" },
     { key: "justicia_equidad", label: "Justicia y equidad", color: "var(--teal)" },
     { key: "confianza_institucional", label: "Confianza instit.", color: "var(--purple)" },
 ] as const;
 
-const pillarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
+const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
 
 const S: Record<string, React.CSSProperties> = {
     page: { display: "flex", flexDirection: "column", height: "100vh", background: "var(--bg)" },
@@ -25,13 +25,13 @@ const S: Record<string, React.CSSProperties> = {
     toast: { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
 };
 
-type PillarAnn = Record<string, { value?: number; reason?: string; is_correction?: boolean }>;
+type PilarAnn = Record<string, { value?: number; reason?: string; is_correction?: boolean }>;
 
-export default function PillarsView() {
+export default function PilarsView() {
     const { id: projectId } = useParams<{ id: string }>();
     const qc = useQueryClient();
     const [offset, setOffset] = useState(0);
-    const [annotations, setAnnotations] = useState<Record<string, PillarAnn>>({});
+    const [annotations, setAnnotations] = useState<Record<string, PilarAnn>>({});
     const [saving, setSaving] = useState<Record<string, boolean>>({});
     const [lockErrors, setLockErrors] = useState<Record<string, string>>({});
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -44,8 +44,8 @@ export default function PillarsView() {
     }, []);
 
     const { data, isLoading } = useQuery({
-        queryKey: ["records", projectId, "pillar", offset],
-        queryFn: () => recordsApi.list(projectId!, { annotation_type: "pillar", limit: LIMIT, offset }),
+        queryKey: ["records", projectId, "pilar", offset],
+        queryFn: () => recordsApi.list(projectId!, { annotation_type: "pilar", limit: LIMIT, offset }),
         enabled: !!projectId,
     });
 
@@ -61,12 +61,12 @@ export default function PillarsView() {
     });
 
     const saveMutation = useMutation({
-        mutationFn: async ({ rec, pann }: { rec: AnnotRecord; pann: PillarAnn }) => {
-            for (const p of PILLARS) {
+        mutationFn: async ({ rec, pann }: { rec: AnnotRecord; pann: PilarAnn }) => {
+            for (const p of PILARS) {
                 const pa = pann[p.key];
                 if (!pa || pa.value === undefined) continue;
-                await annotationsApi.savePillar(projectId!, {
-                    record_id: rec.id, project_id: projectId!, pillar: p.key,
+                await annotationsApi.savePilar(projectId!, {
+                    record_id: rec.id, project_id: projectId!, pilar: p.key,
                     original_value: (rec as any)[p.key] ?? 2, corrected_value: pa.value,
                     is_correction: pa.is_correction ?? false, correction_reason: pa.reason ?? undefined,
                 });
@@ -74,7 +74,7 @@ export default function PillarsView() {
         },
         onSuccess: (_, { rec }) => {
             setSaving((p) => { const n = { ...p }; delete n[rec.id]; return n; });
-            qc.invalidateQueries({ queryKey: ["records", projectId, "pillar"] });
+            qc.invalidateQueries({ queryKey: ["records", projectId, "pilar"] });
             showToast("Pilares guardados ✓");
         },
         onError: (_, { rec }) => {
@@ -85,7 +85,7 @@ export default function PillarsView() {
 
     const handleSave = async (rec: AnnotRecord) => {
         const pann = annotations[rec.id] ?? {};
-        for (const p of PILLARS) {
+        for (const p of PILARS) {
             if (pann[p.key]?.is_correction && !pann[p.key]?.reason) {
                 showToast(`Escribe el motivo para "${p.label}"`, false);
                 return;
@@ -188,7 +188,7 @@ export default function PillarsView() {
                             {(hasLock || (!rec.locked_by_other && !lockErr)) && (
                                 <>
                                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                                        {PILLARS.map((p) => {
+                                        {PILARS.map((p) => {
                                             const llmVal = (rec as any)[p.key] as number | undefined;
                                             const pa = pann[p.key] ?? {};
                                             const sel = pa.value !== undefined ? pa.value : llmVal;
@@ -207,7 +207,7 @@ export default function PillarsView() {
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "monospace", marginTop: 4 }}>IA: {pillarLabel(llmVal)}</div>
+                                                    <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "monospace", marginTop: 4 }}>IA: {pilarLabel(llmVal)}</div>
                                                     {pa.is_correction && (
                                                         <textarea rows={1} placeholder="Motivo..." value={pa.reason ?? ""}
                                                             onChange={(e) => setAnnotations((prev) => ({ ...prev, [rec.id]: { ...prev[rec.id], [p.key]: { ...prev[rec.id]?.[p.key], reason: e.target.value } } }))}

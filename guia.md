@@ -47,7 +47,7 @@ sueltos). Todo eso está generado más abajo y adjunto en esta respuesta.
 | `src/views/AdminView.tsx` | **Nuevo.** Panel donde el admin ve las solicitudes pendientes, elige el rol final, y aprueba/rechaza. También lista todos los usuarios y permite cambiarles el rol. |
 | `src/views/ProjectsView.tsx` | Lista de proyectos disponibles. |
 | `src/views/SentimentView.tsx` | Pantalla de anotación de sentimiento: lock antes de anotar, badges de `lang`/país, progreso. |
-| `src/views/PillarsView.tsx` | Igual pero para los 4 pilares de aceptación política. |
+| `src/views/PilarsView.tsx` | Igual pero para los 4 pilares de aceptación política. |
 | `src/views/ReviewView.tsx` | Pantalla del revisor: acepta/rechaza correcciones de los anotadores. |
 | `src/views/JudgeView.tsx` | Pantalla del juez: compara las anotaciones de los dos anotadores + el LLM, y decide el valor final. |
 
@@ -155,7 +155,7 @@ annotation-platform/                      ← carpeta raíz nueva
             ├── LoginView.tsx                ← tu LoginView.tsx
             ├── ProjectsView.tsx               ← tu Projectsview.tsx RENOMBRADO
             ├── SentimentView.tsx              ← tu SentimentView.tsx
-            ├── PillarsView.tsx                ← tu Pillarsview.tsx RENOMBRADO
+            ├── PilarsView.tsx                ← tu Pilarsview.tsx RENOMBRADO
             ├── AdminView.tsx                  ← tu Adminview.tsx RENOMBRADO
             ├── ReviewView.tsx                 ← NUEVO, adjunto
             └── JudgeView.tsx                  ← NUEVO, adjunto
@@ -314,7 +314,7 @@ el CSV de salida tenga columnas `lang`, `world_continent`, `world_country`,
 | Frontend | `main.tsx`, `index.css`, `index.ts` (types) | ✅ adjuntos |
 | Frontend | `authStore.ts`, `api.ts` | ✅ adjuntos |
 | Frontend | `Layout.tsx`, `ProtectedRoute.tsx` | ✅ adjuntos |
-| Frontend | `LoginView`, `ProjectsView`, `SentimentView`, `PillarsView`, `AdminView` | ✅ adjuntos |
+| Frontend | `LoginView`, `ProjectsView`, `SentimentView`, `PilarsView`, `AdminView` | ✅ adjuntos |
 | Frontend | **`ReviewView.tsx`, `JudgeView.tsx`** | ✅ **generados ahora, antes faltaban** |
 | Frontend | `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `Dockerfile` | ✅ **generados ahora, antes faltaban** |
 | Raíz | `docker-compose.yml` | ✅ **generado ahora, antes faltaba** |

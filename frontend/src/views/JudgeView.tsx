@@ -54,13 +54,13 @@ export default function JudgeView() {
         onError: () => showToast("Error al guardar", false),
     });
 
-    const PILLAR_LABELS: Record<string, string> = {
+    const PILAR_LABELS: Record<string, string> = {
         legitimacion: "Legitimación",
         efectividad: "Efectividad",
         justicia_equidad: "Justicia y equidad",
         confianza_institucional: "Confianza institucional",
     };
-    const PILLAR_OPTS = [{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }];
+    const PILAR_OPTS = [{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }];
 
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
@@ -216,12 +216,12 @@ export default function JudgeView() {
                 {data?.map(({ record, annotations }) => {
                     // Separar anotaciones por tipo
                     const sentAnns = annotations.filter(a => a.annotation_type === "sentiment");
-                    const pillarAnns = annotations.filter(a => a.annotation_type === "pillar");
+                    const pilarAnns = annotations.filter(a => a.annotation_type === "pilar");
                     const fieldAnns = annotations.filter(a => a.annotation_type === "field");
                     // Agrupar pilares por nombre
-                    const pillarsByKey: Record<string, typeof pillarAnns> = {};
-                    for (const a of pillarAnns) {
-                        if (a.pillar) { pillarsByKey[a.pillar] = pillarsByKey[a.pillar] ?? []; pillarsByKey[a.pillar].push(a); }
+                    const pilarsByKey: Record<string, typeof pilarAnns> = {};
+                    for (const a of pilarAnns) {
+                        if (a.pilar) { pilarsByKey[a.pilar] = pilarsByKey[a.pilar] ?? []; pilarsByKey[a.pilar].push(a); }
                     }
                     // Agrupar fields por nombre
                     const fieldsByKey: Record<string, typeof fieldAnns> = {};
@@ -305,19 +305,19 @@ export default function JudgeView() {
                             </div>
 
                             {/* ── PILARES ── */}
-                            {Object.keys(PILLAR_LABELS).length > 0 && (
+                            {Object.keys(PILAR_LABELS).length > 0 && (
                                 <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginBottom: 10 }}>
                                     <div style={{ fontSize: 10, fontWeight: 600, color: "var(--amber)", marginBottom: 6 }}>PILARES</div>
-                                    {Object.entries(PILLAR_LABELS).map(([pillarKey, pillarLabel]) => {
-                                        const llmVal = (record as any)[pillarKey] as number | undefined;
-                                        const justifKey = `justif_${pillarKey}` as keyof typeof record;
+                                    {Object.entries(PILAR_LABELS).map(([pilarKey, pilarLabel]) => {
+                                        const llmVal = (record as any)[pilarKey] as number | undefined;
+                                        const justifKey = `justif_${pilarKey}` as keyof typeof record;
                                         const justif = (record as any)[justifKey] as string | undefined;
-                                        const annotatorVals = pillarsByKey[pillarKey] ?? [];
-                                        const jKey = `${record.id}__${pillarKey}`;
+                                        const annotatorVals = pilarsByKey[pilarKey] ?? [];
+                                        const jKey = `${record.id}__${pilarKey}`;
                                         const sel = judgeFields[jKey];
                                         return (
-                                            <div key={pillarKey} style={{ marginBottom: 8, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 8 }}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--teal)", marginBottom: 4 }}>{pillarLabel}</div>
+                                            <div key={pilarKey} style={{ marginBottom: 8, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 8 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--teal)", marginBottom: 4 }}>{pilarLabel}</div>
                                                 <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(annotatorVals.length + 1, 4)}, 1fr)`, gap: 4, marginBottom: 6 }}>
                                                     <div style={{ fontSize: 10 }}>
                                                         <span style={{ color: "var(--muted)" }}>🤖 LLM: </span>
@@ -333,7 +333,7 @@ export default function JudgeView() {
                                                     ))}
                                                 </div>
                                                 <div style={{ display: "flex", gap: 4 }}>
-                                                    {PILLAR_OPTS.map(opt => (
+                                                    {PILAR_OPTS.map(opt => (
                                                         <button key={opt.v}
                                                             style={{ flex: 1, padding: "4px 2px", borderRadius: 4, border: `1.5px solid ${sel === opt.v ? "var(--teal)" : "var(--border)"}`, fontSize: 10, fontWeight: 500, background: sel === opt.v ? "rgba(40,191,176,0.15)" : "var(--card)", color: sel === opt.v ? "var(--teal)" : "var(--muted)", cursor: "pointer" }}
                                                             onClick={() => setJudgeFields(p => ({ ...p, [jKey]: opt.v }))}>
