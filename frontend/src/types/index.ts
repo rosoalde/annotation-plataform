@@ -205,9 +205,19 @@ export interface ReviewAnnotation {
     original_value?: number;
     corrected_value?: number;
     pilar?: string;
+    field_name?: string;
+    original_text?: string;
+    corrected_text?: string;
     is_correction: boolean;
     reviewer_decision?: ReviewDecision;
     created_at: string;
+    record_content?: string;
+    record_platform?: string;
+    record_tipo?: string;
+    record_fecha?: string;
+    record_url_post?: string;
+    record_cuerpo_padre?: string;
+    record_titulo_padre?: string;
 }
 
 // ── Judge ──────────────────────────────────────────────────────────────────
@@ -224,6 +234,8 @@ export interface JudgeAnnotation {
     corrected_text?: string;
     is_correction: boolean;
     judge_final_value?: number;
+    judge_final_text?: string;
+    reviewer_decision?: "accept" | "reject";
 }
 
 export interface JudgeRecord {

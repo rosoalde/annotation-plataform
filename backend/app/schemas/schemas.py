@@ -294,6 +294,8 @@ class JudgeAnnotationOut(BaseModel):
     corrected_text: Optional[str] = None
     is_correction: bool
     judge_final_value: Optional[int]
+    judge_final_text: Optional[str] = None
+    reviewer_decision: Optional[str] = None
 
 class JudgeRecordOut(BaseModel):
     record: RecordOut
@@ -301,7 +303,19 @@ class JudgeRecordOut(BaseModel):
 
 class JudgeDecideCreate(BaseModel):
     annotation_id: str
-    final_value: int
+    final_value: Optional[int] = None
+    final_text: Optional[str] = None
+    reason: Optional[str] = None
+
+class JudgeDecideNewCreate(BaseModel):
+    """Decisión del juez cuando NO existe ninguna fila previa (ningún anotador corrigió ese pilar/campo)."""
+    record_id: str
+    project_id: str
+    annotation_type: str          # "pilar" | "field"
+    pilar: Optional[str] = None
+    field_name: Optional[str] = None
+    final_value: Optional[int] = None
+    final_text: Optional[str] = None
     reason: Optional[str] = None
 
 

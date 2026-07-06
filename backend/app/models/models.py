@@ -213,6 +213,7 @@ class Annotation(Base):
     correction_reason = Column(Text, nullable=True)
     reviewer_decision = Column(String(20), nullable=True)  # accept | reject
     judge_final_value = Column(Integer, nullable=True)
+    judge_final_text  = Column(Text, nullable=True)  # decisión del juez cuando el campo es de texto
 
     version    = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -141,6 +141,17 @@ export const judgeApi = {
     decide: (annotationId: string, finalValue: number, reason?: string) =>
         http.post(`/judge/decide/${annotationId}`, { annotation_id: annotationId, final_value: finalValue, reason }).then((r) => r.data),
 
+    decideText: (annotationId: string, finalText: string, reason?: string) =>
+        http.post(`/judge/decide/${annotationId}`, { annotation_id: annotationId, final_text: finalText, reason }).then((r) => r.data),
+
+    decideNew: (data: {
+        record_id: string; project_id: string; annotation_type: "pilar" | "field";
+        pilar?: string; field_name?: string; final_value?: number; final_text?: string; reason?: string;
+    }) => http.post("/judge/decide-new", data).then((r) => r.data),
+
+    reset: (projectId: string) =>
+        http.delete(`/judge/reset/${projectId}`).then((r) => r.data),
+
     export: (projectId: string, format: "jsonl" | "csv" = "jsonl", mode: "judge" | "annotators" | "all" = "all") =>
         http.get(`/judge/export/${projectId}`, { params: { format, mode } }).then((r) => r.data),
 };

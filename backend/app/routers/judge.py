@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 from backend.app.core.database import get_db
 from backend.app.core.security import require_role
 from backend.app.models.models import User, Record, Annotation
-from backend.app.schemas.schemas import JudgeRecordOut, JudgeAnnotationOut, JudgeDecideCreate, RecordOut
+from backend.app.schemas.schemas import JudgeRecordOut, JudgeAnnotationOut, JudgeDecideCreate, JudgeDecideNewCreate, RecordOut
 
 router = APIRouter(tags=["judge"])
 
@@ -50,6 +50,7 @@ async def judge_records(
                 corrected_topic=a.corrected_topic, corrected_value=a.corrected_value,
                 pilar=a.pilar, field_name=a.field_name, corrected_text=a.corrected_text,
                 is_correction=a.is_correction, judge_final_value=a.judge_final_value,
+                judge_final_text=a.judge_final_text, reviewer_decision=a.reviewer_decision,
             )
             for a in anns
         ]
@@ -95,8 +96,11 @@ async def judge_decide(
     if not ann:
         raise HTTPException(404, "Annotation not found")
 
-    ann.judge_final_value = body.final_value
-    await db.flush()   # persiste el valor actual antes de contar
+    if body.final_value is not None:
+        ann.judge_final_value = body.final_value
+    if body.final_text is not None:
+        ann.judge_final_text = body.final_text
+    await db.flush()   # persiste el valor actual antes de contar 
 
     # Solo marca como "judged" cuando TODAS las correcciones del registro
     # tienen una decisión final del juez.
@@ -118,7 +122,23 @@ async def judge_decide(
     await db.commit()
     return {"ok": True, "final_value": body.final_value, "pending_decisions": pending}
 
-
+@router.post("/decide-new")
+async def judge_decide_new(
+    body: JudgeDecideNewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("judge", "admin")),
+):
+    """Crea la decisión del juez cuando ningún anotador corrigió ese pilar/campo."""
+    ann = Annotation(
+        record_id=body.record_id, project_id=body.project_id,
+        annotator_id=current_user.id, annotation_type=body.annotation_type,
+        pilar=body.pilar, field_name=body.field_name,
+        is_correction=False, correction_reason=body.reason,
+        judge_final_value=body.final_value, judge_final_text=body.final_text,
+    )
+    db.add(ann)
+    await db.commit()
+    return {"ok": True, "id": ann.id}
 
 @router.delete("/reset/{project_id}")
 async def reset_judge_decisions(

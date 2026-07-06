@@ -58,58 +58,88 @@ export default function ReviewView() {
           </div>
         )}
 
-        {data?.map((ann) => (
-          <div key={ann.id} style={S.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "rgba(155,114,239,0.12)", color: "var(--purple)", border: "1px solid rgba(155,114,239,0.3)", fontFamily: "monospace", fontWeight: 600, textTransform: "uppercase" as const }}>
-                {ann.annotation_type}
-              </span>
-              <span style={{ fontSize: 11, color: "var(--muted)" }}>👤 {ann.annotator_name}</span>
-            </div>
-
-            {ann.record_id !== "keyword" && (
-              <div style={{ fontSize: 12, lineHeight: 1.7, color: "var(--text)", background: "var(--card)", borderRadius: "var(--r)", padding: 10, margin: "8px 0", borderLeft: "3px solid var(--border2)" }}>
-                (ver registro #{ann.record_id.slice(0, 8)})
+        {(() => {
+          const groups = new Map<string, typeof data>();
+          for (const ann of data ?? []) {
+            if (!groups.has(ann.record_id)) groups.set(ann.record_id, []);
+            groups.get(ann.record_id)!.push(ann);
+          }
+          return [...groups.entries()].map(([recordId, anns]) => {
+            const first = anns[0];
+            return (
+              <div key={recordId} style={{ ...S.card, padding: 0, overflow: "hidden" }}>
+                {recordId !== "keyword" && (
+                  <div style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)", padding: "10px 14px" }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "var(--muted)" }}>
+                        {first.record_platform ?? "?"} · {first.record_tipo ?? "?"} · {first.record_fecha ?? "?"}
+                      </span>
+                      {first.record_url_post && (
+                        <a href={first.record_url_post} target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 10, color: "var(--teal)", textDecoration: "none" }}>🔗 ver post</a>
+                      )}
+                    </div>
+                    {first.record_cuerpo_padre && (
+                      <div style={{ fontSize: 11, color: "var(--muted)", background: "var(--surface)", borderLeft: "2px solid var(--purple)", padding: "6px 8px", borderRadius: "var(--r)", marginBottom: 6 }}>
+                        {first.record_titulo_padre && <strong>[{first.record_titulo_padre}] </strong>}
+                        {first.record_cuerpo_padre.slice(0, 200)}{first.record_cuerpo_padre.length > 200 ? "…" : ""}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, lineHeight: 1.6, color: "var(--text)", borderLeft: "3px solid var(--border2)", paddingLeft: 10 }}>
+                      {first.record_content || <em style={{ color: "var(--muted)" }}>(sin contenido)</em>}
+                    </div>
+                  </div>
+                )}
+                <div style={{ padding: "10px 14px" }}>
+                  {anns.map((ann) => (
+                    <div key={ann.id} style={{ borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 100, background: "rgba(155,114,239,0.12)", color: "var(--purple)", border: "1px solid rgba(155,114,239,0.3)", fontFamily: "monospace", fontWeight: 600, textTransform: "uppercase" as const }}>
+                          {ann.annotation_type}{ann.pilar ? ` · ${ann.pilar}` : ""}{ann.field_name ? ` · ${ann.field_name}` : ""}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>👤 {ann.annotator_name}</span>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8, fontSize: 11 }}>
+                        <div style={{ background: "var(--bg)", padding: 8, borderRadius: "var(--r)", border: "1px solid var(--border)" }}>
+                          <div style={{ color: "var(--muted)", marginBottom: 4 }}>🤖 Original (LLM)</div>
+                          {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.original_sentiment)} | {ann.original_topic || "—"}</div>}
+                          {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.original_value ?? "—"}</div>}
+                          {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
+                          {ann.annotation_type === "keyword" && <div>{ann.corrected_topic}</div>}
+                        </div>
+                        <div style={{ background: "rgba(78,123,239,0.08)", padding: 8, borderRadius: "var(--r)", border: "1px solid rgba(78,123,239,0.25)" }}>
+                          <div style={{ color: "var(--accent2)", marginBottom: 4 }}>👤 Corrección humana</div>
+                          {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.corrected_sentiment)} | {ann.corrected_topic || "—"}</div>}
+                          {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.corrected_value ?? "—"}</div>}
+                          {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.corrected_text || "—"}</div>}
+                          {ann.annotation_type === "keyword" && <div>{ann.is_correction ? "Rechazada" : "Aceptada"}</div>}
+                        </div>
+                      </div>
+                      {ann.correction_reason && (
+                        <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 8 }}>
+                          <strong>Motivo:</strong> {ann.correction_reason}
+                        </div>
+                      )}
+                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          style={{ padding: "5px 11px", borderRadius: "var(--r)", border: "1px solid rgba(224,82,82,0.3)", background: "rgba(224,82,82,0.08)", color: "var(--red)", fontSize: 11, fontWeight: 500, cursor: "pointer" }}
+                          onClick={() => decideMutation.mutate({ id: ann.id, decision: "reject" })}>
+                          ✗ Rechazar
+                        </button>
+                        <button
+                          style={{ padding: "5px 11px", borderRadius: "var(--r)", border: "1px solid rgba(46,194,126,0.3)", background: "rgba(46,194,126,0.08)", color: "var(--green)", fontSize: 11, fontWeight: 500, cursor: "pointer" }}
+                          onClick={() => decideMutation.mutate({ id: ann.id, decision: "accept" })}>
+                          ✓ Aceptar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
+            );
+          });
+        })()}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10, fontSize: 11 }}>
-              <div style={{ background: "var(--bg)", padding: 10, borderRadius: "var(--r)", border: "1px solid var(--border)" }}>
-                <div style={{ color: "var(--muted)", marginBottom: 4 }}>🤖 Original (LLM)</div>
-                {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.original_sentiment)} | {ann.original_topic || "—"}</div>}
-                {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.original_value}</div>}
-                {ann.annotation_type === "keyword" && <div>{ann.corrected_topic}</div>}
-                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.original_text || "—"}</div>}
-              </div>
-              <div style={{ background: "rgba(78,123,239,0.08)", padding: 10, borderRadius: "var(--r)", border: "1px solid rgba(78,123,239,0.25)" }}>
-                <div style={{ color: "var(--accent2)", marginBottom: 4 }}>👤 Corrección humana</div>
-                {ann.annotation_type === "sentiment" && <div>{sentLabel(ann.corrected_sentiment)} | {ann.corrected_topic || "—"}</div>}
-                {ann.annotation_type === "pilar" && <div>{ann.pilar}: {ann.corrected_value}</div>}
-                {ann.annotation_type === "field" && <div>{ann.field_name}: {ann.corrected_text || "—"}</div>}
-                {ann.annotation_type === "keyword" && <div>{ann.is_correction ? "Rechazada" : "Aceptada"}</div>}
-              </div>
-            </div>
-
-            {ann.correction_reason && (
-              <div style={{ fontSize: 11, color: "var(--amber)", marginBottom: 12 }}>
-                <strong>Motivo:</strong> {ann.correction_reason}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid rgba(224,82,82,0.3)", background: "rgba(224,82,82,0.08)", color: "var(--red)", fontSize: 11, fontWeight: 500 }}
-                onClick={() => decideMutation.mutate({ id: ann.id, decision: "reject" })}>
-                ✗ Rechazar
-              </button>
-              <button
-                style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid rgba(46,194,126,0.3)", background: "rgba(46,194,126,0.08)", color: "var(--green)", fontSize: 11, fontWeight: 500 }}
-                onClick={() => decideMutation.mutate({ id: ann.id, decision: "accept" })}>
-                ✓ Aceptar
-              </button>
-            </div>
-          </div>
-        ))}
       </div>
 
       {toast && (
