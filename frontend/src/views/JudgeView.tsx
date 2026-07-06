@@ -180,19 +180,23 @@ export default function JudgeView() {
                 <a ref={downloadRef} style={{ display: "none" }} />
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
                     <span style={{ fontSize: 10, color: "var(--accent2)", alignSelf: "center" }}>Exportar:</span>
-                    {(["judge", "annotators", "all"] as const).map((mode) => (
+                    {([
+                        { mode: "judge", label: "Gold Standard" },
+                        { mode: "annotators", label: "Anotadores" },
+                        { mode: "all", label: "Completo" },
+                    ] as const).map(({ mode, label }) => (
                         <div key={mode} style={{ display: "flex", gap: 3 }}>
                             <button
                                 disabled={exporting}
-                                onClick={() => handleExport("jsonl", mode)}
+                                onClick={() => handleExport("jsonl", mode as "judge" | "annotators" | "all")}
                                 style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--accent2)", fontSize: 10, cursor: "pointer" }}>
-                                {mode} JSONL
+                                {label} JSONL
                             </button>
                             <button
                                 disabled={exporting}
-                                onClick={() => handleExport("csv", mode)}
+                                onClick={() => handleExport("csv", mode as "judge" | "annotators" | "all")}
                                 style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--accent2)", fontSize: 10, cursor: "pointer" }}>
-                                CSV
+                                {label} CSV
                             </button>
                         </div>
                     ))}
@@ -347,22 +351,50 @@ export default function JudgeView() {
                                 {savedSentiment !== undefined && judgeFields[`${record.id}__sentiment`] === undefined && (
                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada</div>
                                 )}
+
                                 {judgeFields[`${record.id}__sentiment`] !== undefined && sentAnns[0] && (
-                                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column" as const, gap: 6 }}>
+                                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                                         <textarea
                                             rows={1}
                                             placeholder="Motivo de la decisión del juez (opcional)..."
-                                            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
+                                            style={{
+                                                background: "var(--card)",
+                                                border: "1px solid var(--border)",
+                                                borderRadius: "var(--r)",
+                                                color: "var(--text)",
+                                                padding: "5px 8px",
+                                                fontSize: 10,
+                                                resize: "none",
+                                                fontFamily: "inherit",
+                                            }}
                                             value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? ""}
-                                            onChange={e => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
+                                            onChange={(e) =>
+                                                setJudgeFields((p) => ({
+                                                    ...p,
+                                                    [`${record.id}__sentiment_reason`]: e.target.value,
+                                                }))
+                                            }
+                                        />
+
                                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                             <button
-                                                onClick={() => judgeFieldMutation.mutate({
-                                                    annotationId: sentAnns[0].id,
-                                                    finalValue: judgeFields[`${record.id}__sentiment`] as number,
-                                                    reason: (judgeFields[`${record.id}__sentiment_reason`] as string) || undefined,
-                                                })}
-                                                style={{ padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
+                                                onClick={() =>
+                                                    judgeFieldMutation.mutate({
+                                                        annotationId: sentAnns[0].id,
+                                                        finalValue: judgeFields[`${record.id}__sentiment`] as number,
+                                                        reason: (judgeFields[`${record.id}__sentiment_reason`] as string) || undefined,
+                                                    })
+                                                }
+                                                style={{
+                                                    padding: "5px 12px",
+                                                    borderRadius: "var(--r)",
+                                                    background: "var(--accent)",
+                                                    color: "#fff",
+                                                    border: "none",
+                                                    fontSize: 11,
+                                                    cursor: "pointer",
+                                                }}
+                                            >
                                                 Guardar sentimiento →
                                             </button>
                                         </div>
