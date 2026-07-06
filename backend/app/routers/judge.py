@@ -270,45 +270,83 @@ async def export_judged(
 
         # ── Modo JUDGE: un row por record ─────────────────────────────────
         if mode in ("judge", "all"):
-            # Recoger el topic humano consensuado (el del juez si existe, si no el primero disponible)
-            human_topic = None
+            # Sentimiento: prioriza la decisión del juez
+            human_topic, human_topic_reason = None, None
             for a in sent_anns:
                 if a.corrected_topic:
-                    human_topic = a.corrected_topic
+                    human_topic, human_topic_reason = a.corrected_topic, a.topic_reason
                     break
 
-            # Recoger pilares: si hay decisión del juez tomar ese anotador; si no, votar por mayoría
-            pilar_values: dict = {}
-            for p_ann in pilar_anns:
-                key = p_ann.pilar
-                if key not in pilar_values:
-                    pilar_values[key] = []
-                pilar_values[key].append(p_ann.corrected_value)
-            pilar_consensus = {k: max(set(v), key=v.count) for k, v in pilar_values.items()}
+            # Pilares: decisión del juez por pilar; si no hay, mayoría entre anotadores
+            PILAR_KEYS = ["legitimacion", "efectividad", "justicia_equidad", "confianza_institucional"]
+            pilar_final: dict = {}
+            for key in PILAR_KEYS:
+                anns_k = [a for a in pilar_anns if a.pilar == key]
+                judge_a = next((a for a in anns_k if a.judge_final_value is not None), None)
+                if judge_a:
+                    pilar_final[key] = (judge_a.judge_final_value, judge_a.correction_reason)
+                else:
+                    vals = [a.corrected_value for a in anns_k if a.corrected_value is not None]
+                    if vals:
+                        consensus = max(set(vals), key=vals.count)
+                        reason = next((a.correction_reason for a in anns_k if a.corrected_value == consensus), None)
+                        pilar_final[key] = (consensus, reason)
+                    else:
+                        pilar_final[key] = (None, None)
 
-            # Recoger campos de texto: último valor humano anotado para cada campo
-            field_values: dict = {}
-            for f_ann in field_anns:
-                field_values[f_ann.field_name] = f_ann.corrected_text
+            # Campos de texto: decisión del juez; si no hay y todos los anotadores
+            # coinciden, ese valor; si hay desacuerdo sin decisión del juez, queda pendiente (None)
+            TEXT_FIELD_KEYS = ["pertinencia", "posicion", "idioma_ia", "lang",
+                               "world_continent", "world_country", "world_region", "world_city", "codigo_pais"]
+            field_final: dict = {}
+            for key in TEXT_FIELD_KEYS:
+                anns_k = [a for a in field_anns if a.field_name == key]
+                judge_a = next((a for a in anns_k if a.judge_final_text is not None), None)
+                if judge_a:
+                    field_final[key] = (judge_a.judge_final_text, judge_a.correction_reason)
+                else:
+                    texts = {a.corrected_text for a in anns_k if a.corrected_text}
+                    if len(texts) == 1:
+                        value = next(iter(texts))
+                        reason = next((a.correction_reason for a in anns_k if a.corrected_text == value), None)
+                        field_final[key] = (value, reason)
+                    else:
+                        field_final[key] = (None, None)
 
             row = {
                 **base,
                 "export_mode":        "judge",
                 "judge_final_value":  judge_ann.judge_final_value if judge_ann else None,
                 "judge_annotator":    judge_ann.annotator.username if judge_ann and judge_ann.annotator else None,
+                "judge_reason":       judge_ann.correction_reason if judge_ann else None,
                 "human_topic":        human_topic,
-                "human_pertinencia":  field_values.get("pertinencia"),
-                "human_posicion":     field_values.get("posicion"),
-                "human_lang":         field_values.get("lang"),
-                "human_world_continent": field_values.get("world_continent"),
-                "human_world_country":   field_values.get("world_country"),
-                "human_world_region":    field_values.get("world_region"),
-                "human_world_city":      field_values.get("world_city"),
-                "human_codigo_pais":     field_values.get("codigo_pais"),
-                "legitimacion_human":    pilar_consensus.get("legitimacion"),
-                "efectividad_human":     pilar_consensus.get("efectividad"),
-                "justicia_equidad_human": pilar_consensus.get("justicia_equidad"),
-                "confianza_inst_human":  pilar_consensus.get("confianza_institucional"),
+                "human_topic_reason": human_topic_reason,
+                "human_pertinencia":         field_final["pertinencia"][0],
+                "human_pertinencia_reason":  field_final["pertinencia"][1],
+                "human_posicion":            field_final["posicion"][0],
+                "human_posicion_reason":     field_final["posicion"][1],
+                "human_idioma_ia":           field_final["idioma_ia"][0],
+                "human_idioma_ia_reason":    field_final["idioma_ia"][1],
+                "human_lang":                field_final["lang"][0],
+                "human_lang_reason":         field_final["lang"][1],
+                "human_world_continent":         field_final["world_continent"][0],
+                "human_world_continent_reason":  field_final["world_continent"][1],
+                "human_world_country":           field_final["world_country"][0],
+                "human_world_country_reason":    field_final["world_country"][1],
+                "human_world_region":            field_final["world_region"][0],
+                "human_world_region_reason":     field_final["world_region"][1],
+                "human_world_city":              field_final["world_city"][0],
+                "human_world_city_reason":       field_final["world_city"][1],
+                "human_codigo_pais":             field_final["codigo_pais"][0],
+                "human_codigo_pais_reason":      field_final["codigo_pais"][1],
+                "legitimacion_human":            pilar_final["legitimacion"][0],
+                "legitimacion_human_reason":     pilar_final["legitimacion"][1],
+                "efectividad_human":             pilar_final["efectividad"][0],
+                "efectividad_human_reason":      pilar_final["efectividad"][1],
+                "justicia_equidad_human":        pilar_final["justicia_equidad"][0],
+                "justicia_equidad_human_reason": pilar_final["justicia_equidad"][1],
+                "confianza_inst_human":          pilar_final["confianza_institucional"][0],
+                "confianza_inst_human_reason":   pilar_final["confianza_institucional"][1],
             }
             rows_judge.append(row)
 
@@ -378,7 +416,8 @@ async def export_judged(
         if not all_rows:
             return {"data": "", "count": 0, "format": "csv", "mode": mode}
         out = io.StringIO()
-        w   = _csv.DictWriter(out, fieldnames=list(all_rows[0].keys()), extrasaction="ignore")
+        fieldnames = list(dict.fromkeys(k for r in all_rows for k in r.keys()))  # unión de todas las claves, sin duplicar
+        w   = _csv.DictWriter(out, fieldnames=fieldnames, extrasaction="ignore")
         w.writeheader()
         w.writerows(all_rows)
         return {"data": out.getvalue(), "count": len(all_rows), "format": "csv", "mode": mode}
