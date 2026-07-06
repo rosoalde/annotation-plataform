@@ -100,6 +100,8 @@ async def judge_decide(
         ann.judge_final_value = body.final_value
     if body.final_text is not None:
         ann.judge_final_text = body.final_text
+    if body.reason is not None:
+        ann.correction_reason = body.reason    
     await db.flush()   # persiste el valor actual antes de contar 
 
     # Solo marca como "judged" cuando TODAS las correcciones del registro
@@ -188,12 +190,12 @@ async def export_judged(
         "project_tema":      project.tema if project else None,
         "project_desc_tema": project.desc_tema if project else None,
         "project_scope":     project.population_scope if project else None,
-        "keywords_accepted": [k.keyword for k in keywords_list if k.accepted is True],
-        "keywords_rejected": [k.keyword for k in keywords_list if k.accepted is False],
-        "keywords_pending":  [k.keyword for k in keywords_list if k.accepted is None],
-        "keywords_judge_accepted": [k.keyword for k in keywords_list if k.reviewer_decision == "accept"],
-        "keywords_judge_rejected": [k.keyword for k in keywords_list if k.reviewer_decision == "reject"],
-        "keywords_judge_pending":  [k.keyword for k in keywords_list if k.reviewer_decision is None],
+        # "keywords_accepted": [k.keyword for k in keywords_list if k.accepted is True],
+        # "keywords_rejected": [k.keyword for k in keywords_list if k.accepted is False],
+        # "keywords_pending":  [k.keyword for k in keywords_list if k.accepted is None],
+        # "keywords_judge_accepted": [k.keyword for k in keywords_list if k.reviewer_decision == "accept"],
+        # "keywords_judge_rejected": [k.keyword for k in keywords_list if k.reviewer_decision == "reject"],
+        # "keywords_judge_pending":  [k.keyword for k in keywords_list if k.reviewer_decision is None],
     }
 
     ann_result = await db.execute(
@@ -269,84 +271,148 @@ async def export_judged(
         judge_ann = next((a for a in sent_anns if a.judge_final_value is not None), None)
 
         # ── Modo JUDGE: un row por record ─────────────────────────────────
+        # ── Modo JUDGE: un row por record ─────────────────────────────────
         if mode in ("judge", "all"):
-            # Sentimiento: prioriza la decisión del juez
-            human_topic, human_topic_reason = None, None
-            for a in sent_anns:
-                if a.corrected_topic:
-                    human_topic, human_topic_reason = a.corrected_topic, a.topic_reason
+            # ── Sentiment ──────────────────────────────────────────────────
+            judge_sent_ann = next(
+                (a for a in sent_anns if a.judge_final_value is not None), None
+            )
+            sent_final       = judge_sent_ann.judge_final_value if judge_sent_ann else rec.sentiment_llm
+            sent_judge_reason = judge_sent_ann.correction_reason if judge_sent_ann else None
+
+            # ── Topic (stored as field annotation with field_name="topic") ─
+            judge_topic_ann = next(
+                (a for a in field_anns if a.field_name == "topic" and a.judge_final_text is not None), None
+            )
+            topic_final       = judge_topic_ann.judge_final_text if judge_topic_ann else rec.topic_llm
+            topic_judge_reason = judge_topic_ann.correction_reason if judge_topic_ann else None
+
+            # ── Pilars ────────────────────────────────────────────────────
+            PILAR_KEYS = [
+                "legitimacion", "efectividad",
+                "justicia_equidad", "confianza_institucional",
+            ]
+            pilar_llm_map = {
+                "legitimacion":            rec.legitimacion,
+                "efectividad":             rec.efectividad,
+                "justicia_equidad":        rec.justicia_equidad,
+                "confianza_institucional": rec.confianza_institucional,
+            }
+            pilar_final   = {}
+            pilar_reasons = {}
+            for key in PILAR_KEYS:
+                judge_a = next(
+                    (a for a in pilar_anns if a.pilar == key and a.judge_final_value is not None), None
+                )
+                if judge_a:
+                    pilar_final[key]   = judge_a.judge_final_value
+                    pilar_reasons[key] = judge_a.correction_reason
+                else:
+                    pilar_final[key]   = pilar_llm_map[key]   # LLM fallback
+                    pilar_reasons[key] = None
+
+            # ── Text fields ────────────────────────────────────────────────
+            TEXT_FIELD_KEYS = [
+                "pertinencia", "posicion", "idioma_ia", "lang",
+                "world_continent", "world_country", "world_region",
+                "world_city", "codigo_pais",
+            ]
+            llm_field_map = {
+                "pertinencia":     rec.pertinencia,
+                "posicion":        rec.posicion,
+                "idioma_ia":       rec.idioma_ia,
+                "lang":            rec.lang,
+                "world_continent": rec.world_continent,
+                "world_country":   rec.world_country,
+                "world_region":    rec.world_region,
+                "world_city":      rec.world_city,
+                "codigo_pais":     rec.codigo_pais,
+            }
+            field_final   = {}
+            field_reasons = {}
+            for key in TEXT_FIELD_KEYS:
+                judge_a = next(
+                    (a for a in field_anns
+                     if a.field_name == key and a.judge_final_text is not None), None
+                )
+                if judge_a:
+                    field_final[key]   = judge_a.judge_final_text
+                    field_reasons[key] = judge_a.correction_reason
+                else:
+                    field_final[key]   = llm_field_map[key]   # LLM fallback
+                    field_reasons[key] = None
+
+            # ── Judge username ─────────────────────────────────────────────
+            judge_user = None
+            for _a in sent_anns + pilar_anns + field_anns:
+                if _a.judge_final_value is not None or _a.judge_final_text is not None:
+                    judge_user = _a.annotator.username if _a.annotator else None
                     break
 
-            # Pilares: decisión del juez por pilar; si no hay, mayoría entre anotadores
-            PILAR_KEYS = ["legitimacion", "efectividad", "justicia_equidad", "confianza_institucional"]
-            pilar_final: dict = {}
-            for key in PILAR_KEYS:
-                anns_k = [a for a in pilar_anns if a.pilar == key]
-                judge_a = next((a for a in anns_k if a.judge_final_value is not None), None)
-                if judge_a:
-                    pilar_final[key] = (judge_a.judge_final_value, judge_a.correction_reason)
-                else:
-                    vals = [a.corrected_value for a in anns_k if a.corrected_value is not None]
-                    if vals:
-                        consensus = max(set(vals), key=vals.count)
-                        reason = next((a.correction_reason for a in anns_k if a.corrected_value == consensus), None)
-                        pilar_final[key] = (consensus, reason)
-                    else:
-                        pilar_final[key] = (None, None)
-
-            # Campos de texto: decisión del juez; si no hay y todos los anotadores
-            # coinciden, ese valor; si hay desacuerdo sin decisión del juez, queda pendiente (None)
-            TEXT_FIELD_KEYS = ["pertinencia", "posicion", "idioma_ia", "lang",
-                               "world_continent", "world_country", "world_region", "world_city", "codigo_pais"]
-            field_final: dict = {}
-            for key in TEXT_FIELD_KEYS:
-                anns_k = [a for a in field_anns if a.field_name == key]
-                judge_a = next((a for a in anns_k if a.judge_final_text is not None), None)
-                if judge_a:
-                    field_final[key] = (judge_a.judge_final_text, judge_a.correction_reason)
-                else:
-                    texts = {a.corrected_text for a in anns_k if a.corrected_text}
-                    if len(texts) == 1:
-                        value = next(iter(texts))
-                        reason = next((a.correction_reason for a in anns_k if a.corrected_text == value), None)
-                        field_final[key] = (value, reason)
-                    else:
-                        field_final[key] = (None, None)
+            judge_made_correction = (
+                judge_sent_ann is not None
+                or judge_topic_ann is not None
+                or any(field_reasons[k] is not None for k in TEXT_FIELD_KEYS)
+                or any(pilar_reasons[k] is not None for k in PILAR_KEYS)
+            )
 
             row = {
-                **base,
-                "export_mode":        "judge",
-                "judge_final_value":  judge_ann.judge_final_value if judge_ann else None,
-                "judge_annotator":    judge_ann.annotator.username if judge_ann and judge_ann.annotator else None,
-                "judge_reason":       judge_ann.correction_reason if judge_ann else None,
-                "human_topic":        human_topic,
-                "human_topic_reason": human_topic_reason,
-                "human_pertinencia":         field_final["pertinencia"][0],
-                "human_pertinencia_reason":  field_final["pertinencia"][1],
-                "human_posicion":            field_final["posicion"][0],
-                "human_posicion_reason":     field_final["posicion"][1],
-                "human_idioma_ia":           field_final["idioma_ia"][0],
-                "human_idioma_ia_reason":    field_final["idioma_ia"][1],
-                "human_lang":                field_final["lang"][0],
-                "human_lang_reason":         field_final["lang"][1],
-                "human_world_continent":         field_final["world_continent"][0],
-                "human_world_continent_reason":  field_final["world_continent"][1],
-                "human_world_country":           field_final["world_country"][0],
-                "human_world_country_reason":    field_final["world_country"][1],
-                "human_world_region":            field_final["world_region"][0],
-                "human_world_region_reason":     field_final["world_region"][1],
-                "human_world_city":              field_final["world_city"][0],
-                "human_world_city_reason":       field_final["world_city"][1],
-                "human_codigo_pais":             field_final["codigo_pais"][0],
-                "human_codigo_pais_reason":      field_final["codigo_pais"][1],
-                "legitimacion_human":            pilar_final["legitimacion"][0],
-                "legitimacion_human_reason":     pilar_final["legitimacion"][1],
-                "efectividad_human":             pilar_final["efectividad"][0],
-                "efectividad_human_reason":      pilar_final["efectividad"][1],
-                "justicia_equidad_human":        pilar_final["justicia_equidad"][0],
-                "justicia_equidad_human_reason": pilar_final["justicia_equidad"][1],
-                "confianza_inst_human":          pilar_final["confianza_institucional"][0],
-                "confianza_inst_human_reason":   pilar_final["confianza_institucional"][1],
+                # ── Identity & metadata ───────────────────────────────────
+                "record_id":   rec.id,
+                "external_id": rec.external_id,
+                "content":     rec.content,
+                "platform":    rec.platform,
+                "tipo":        rec.tipo,
+                "fecha":       rec.fecha,
+                "fuente":      rec.fuente,
+                "url_post":    rec.url_post,
+                "status":      rec.status,
+                # ── LLM original values (audit trail) ─────────────────────
+                "sentiment_llm":        rec.sentiment_llm,
+                "topic_llm":            rec.topic_llm,
+                "pertinencia_llm":      rec.pertinencia,
+                "posicion_llm":         rec.posicion,
+                "lang_llm":             rec.lang,
+                "world_continent_llm":  rec.world_continent,
+                "world_country_llm":    rec.world_country,
+                "world_region_llm":     rec.world_region,
+                "world_city_llm":       rec.world_city,
+                "codigo_pais_llm":      rec.codigo_pais,
+                "legitimacion_llm":     rec.legitimacion,
+                "efectividad_llm":      rec.efectividad,
+                "justicia_equidad_llm": rec.justicia_equidad,
+                "confianza_inst_llm":   rec.confianza_institucional,
+                # ── GOLD-STANDARD final values (judge OR LLM fallback) ─────
+                "sentiment_final":        sent_final,
+                "topic_final":            topic_final,
+                "pertinencia_final":      field_final["pertinencia"],
+                "posicion_final":         field_final["posicion"],
+                "lang_final":             field_final["lang"],
+                "world_continent_final":  field_final["world_continent"],
+                "world_country_final":    field_final["world_country"],
+                "world_region_final":     field_final["world_region"],
+                "world_city_final":       field_final["world_city"],
+                "codigo_pais_final":      field_final["codigo_pais"],
+                "legitimacion_final":     pilar_final["legitimacion"],
+                "efectividad_final":      pilar_final["efectividad"],
+                "justicia_equidad_final": pilar_final["justicia_equidad"],
+                "confianza_inst_final":   pilar_final["confianza_institucional"],
+                # ── Judge justifications (null = kept LLM value as-is) ─────
+                "judge_sentiment_reason":        sent_judge_reason,
+                "judge_topic_reason":            topic_judge_reason,
+                "judge_pertinencia_reason":      field_reasons["pertinencia"],
+                "judge_posicion_reason":         field_reasons["posicion"],
+                "judge_lang_reason":             field_reasons["lang"],
+                "judge_world_country_reason":    field_reasons["world_country"],
+                "judge_legitimacion_reason":     pilar_reasons["legitimacion"],
+                "judge_efectividad_reason":      pilar_reasons["efectividad"],
+                "judge_justicia_equidad_reason": pilar_reasons["justicia_equidad"],
+                "judge_confianza_inst_reason":   pilar_reasons["confianza_institucional"],
+                # ── Audit ──────────────────────────────────────────────────
+                "judge_made_correction": judge_made_correction,
+                "judge_username":        judge_user,
+                # ── Project context ───────────────────────────────────────
+                **project_meta,
             }
             rows_judge.append(row)
 
