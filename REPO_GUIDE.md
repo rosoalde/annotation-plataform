@@ -1,6 +1,5 @@
 # Guía del repositorio — Plataforma de Etiquetado
 
-> Generada el 2 Jul 2026 revisando el código real de cada archivo.  
 > Para alguien que no conoce la plataforma: aquí encontrará exactamente qué hace cada archivo y dónde buscar cuando quiere cambiar algo.
 
 ---
