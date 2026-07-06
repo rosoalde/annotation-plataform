@@ -317,7 +317,7 @@ export default function JudgeView() {
                                 {/* Decisión del juez: sentimiento */}
                                 <div style={{ fontSize: 9, color: "var(--amber)", marginBottom: 4 }}>⚖️ Decisión final:</div>
                                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const }}>
-                                    {{
+                                    {
                                         SENT_OPTS.map(opt => {
                                             const key = `${record.id}__sentiment`;
                                             const sel = (judgeFields[key] ?? savedSentiment) === opt.v;
@@ -328,8 +328,7 @@ export default function JudgeView() {
                                                     {opt.icon} {opt.label}
                                                 </button>
                                             );
-                                        })
-                                    }
+                                        })}
                                 </div>
                                 {savedSentiment !== undefined && judgeFields[`${record.id}__sentiment`] === undefined && (
                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada</div>
