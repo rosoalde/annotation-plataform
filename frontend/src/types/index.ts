@@ -12,6 +12,7 @@ export interface AuthUser {
     role: UserRole;
     status: UserStatus;
     email?: string;
+    must_change_password: boolean;
 }
 
 export interface RegisterResponse {
@@ -30,6 +31,7 @@ export interface TokenResponse {
     username: string;
     role: UserRole;
     status: UserStatus;
+    must_change_password: boolean;
 }
 
 // ── Admin: user approval ─────────────────────────────────────────────────

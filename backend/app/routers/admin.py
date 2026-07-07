@@ -87,6 +87,7 @@ async def reset_password(
         raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
 
     user.hashed_pw = hash_password(new_password)
+    user.must_change_password = True
     await db.commit()
     return {"ok": True, "user_id": user.id, "temp_password": new_password}
 @router.post("/users/{user_id}/role")

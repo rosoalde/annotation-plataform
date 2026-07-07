@@ -42,8 +42,9 @@ export default function LoginView() {
             const data = await authApi.login(username, password);
             setAuth(data.access_token, {
                 id: data.user_id, username: data.username, role: data.role, status: data.status,
+                must_change_password: data.must_change_password,
             });
-            navigate("/projects");
+            navigate(data.must_change_password ? "/change-password" : "/projects");
         } catch (err: any) {
             if (err instanceof AccountPendingError) {
                 setError(err.message);

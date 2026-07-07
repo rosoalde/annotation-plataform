@@ -137,11 +137,6 @@ export default function AdminView() {
                 <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--muted)", margin: "26px 0 10px" }}>
                     Todos los usuarios
                 </div>
-                <button
-                    onClick={() => { if (confirm(`¿Resetear contraseña de ${u.username}?`)) resetPwMutation.mutate(u.id); }}
-                    style={{ fontSize: 10, padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border2)", background: "transparent", color: "var(--muted)" }}>
-                    🔑 Reset
-                </button>
 
                 {loadingAll && <div style={{ color: "var(--muted)", padding: 12 }}>Cargando...</div>}
 
@@ -162,6 +157,11 @@ export default function AdminView() {
                                 style={{ fontSize: 11, padding: "3px 6px", color: roleColor(u.role) }}>
                                 {ROLE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                             </select>
+                            <button
+                                onClick={() => { if (confirm(`¿Resetear contraseña de ${u.username}?`)) resetPwMutation.mutate(u.id); }}
+                                style={{ fontSize: 10, padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border2)", background: "transparent", color: "var(--muted)" }}>
+                                🔑 Reset
+                            </button>
                         </div>
                     ))}
                 </div>

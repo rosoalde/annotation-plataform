@@ -15,7 +15,7 @@ from sqlalchemy import select, or_
 from backend.app.core.database import get_db
 from backend.app.core.security import hash_password, verify_password, create_access_token, get_current_user
 from backend.app.models.models import User
-from backend.app.schemas.schemas import RegisterRequest, RegisterResponse, LoginRequest, TokenResponse
+from backend.app.schemas.schemas import ChangePasswordRequest, RegisterRequest, RegisterResponse, LoginRequest, TokenResponse
 
 router = APIRouter(tags=["auth"])
 
@@ -77,7 +77,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     token = create_access_token({"sub": user.id})
     return TokenResponse(
         access_token=token, user_id=user.id, username=user.username,
-        role=user.role, status=user.status,
+        role=user.role, status=user.status, must_change_password=user.must_change_password,
     )
 
 
@@ -87,4 +87,21 @@ async def me(current_user: User = Depends(get_current_user)):
         "id": current_user.id, "username": current_user.username,
         "email": current_user.email, "role": current_user.role,
         "status": current_user.status,
+        "must_change_password": current_user.must_change_password,
     }
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(body.current_password, current_user.hashed_pw):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 8 caracteres")
+
+    current_user.hashed_pw = hash_password(body.new_password)
+    current_user.must_change_password = False
+    await db.commit()
+    return {"ok": True}

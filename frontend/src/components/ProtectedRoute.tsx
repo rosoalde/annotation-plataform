@@ -12,3 +12,10 @@ export function AdminRoute() {
     if (user?.role !== "admin") return <Navigate to="/projects" replace />;
     return <Outlet />;
 }
+
+export default function ProtectedRoute() {
+    const { token, user } = useAuthStore();
+    if (!token) return <Navigate to="/login" replace />;
+    if (user?.must_change_password) return <Navigate to="/change-password" replace />;
+    return <Outlet />;
+}

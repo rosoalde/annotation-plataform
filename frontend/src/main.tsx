@@ -14,6 +14,7 @@ import KeywordsView from "./views/KeywordsView";
 import AdminView from "./views/AdminView";
 import Layout from "./components/Layout";
 import ProtectedRoute, { AdminRoute } from "./components/ProtectedRoute";
+import ChangePasswordView from "./views/ChangePasswordView";
 import ImportView from "./views/ImportView";
 
 import "./index.css";
@@ -29,6 +30,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Routes>
                     <Route path="/login" element={<LoginView />} />
                     <Route element={<ProtectedRoute />}>
+                        <Route path="/change-password" element={<ChangePasswordView />} />
                         <Route element={<Layout />}>
                             <Route index element={<Navigate to="/projects" replace />} />
                             <Route path="/projects" element={<ProjectsView />} />
@@ -43,6 +45,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                                 <Route path="/admin" element={<AdminView />} />
                             </Route>
                         </Route>
+
                     </Route>
                     <Route path="*" element={<Navigate to="/login" replace />} />
                 </Routes>

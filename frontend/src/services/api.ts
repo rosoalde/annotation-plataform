@@ -51,6 +51,9 @@ export const authApi = {
         http.post<TokenResponse>("/auth/login", { username, password }).then((r) => r.data),
 
     me: () => http.get("/auth/me").then((r) => r.data),
+
+    changePassword: (currentPassword: string, newPassword: string) =>
+        http.post("/auth/change-password", { current_password: currentPassword, new_password: newPassword }).then((r) => r.data),
 };
 
 // ── Admin: approval workflow ───────────────────────────────────────────────

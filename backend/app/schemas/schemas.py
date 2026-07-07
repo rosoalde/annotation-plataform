@@ -31,6 +31,7 @@ class TokenResponse(BaseModel):
     username: str
     role: str
     status: str
+    must_change_password: bool = False
 
 
 # ── Admin: user management ──────────────────────────────────────────────────
@@ -52,6 +53,10 @@ class UserApprovalDecision(BaseModel):
 class AdminPasswordReset(BaseModel):
     new_password: Optional[str] = None   # si no se envía, se genera una temporal
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+    
 class UserOut(BaseModel):
     id: str
     username: str
