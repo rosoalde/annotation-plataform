@@ -26,6 +26,28 @@ export default function AdminView() {
         setTimeout(() => setToast(null), 2600);
     };
 
+    const copyToClipboard = async (text: string) => {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // Fallback para contextos no seguros (HTTP sobre IP, no localhost)
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.style.position = "fixed";
+                ta.style.opacity = "0";
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+            }
+            showToast("Contraseña copiada ✓");
+        } catch {
+            showToast("No se pudo copiar. Seleccioná el texto y usá Ctrl+C.", false);
+        }
+    };
+
     const { data: pending, isLoading: loadingPending } = useQuery({
         queryKey: ["admin-pending-users"],
         queryFn: adminApi.pendingUsers,
@@ -180,7 +202,8 @@ export default function AdminView() {
                             Copiala ahora y pasásela al usuario. No se va a volver a mostrar.
                         </div>
                         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                            <button onClick={() => navigator.clipboard.writeText(tempPwModal.password)} style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid var(--border2)" }}>Copiar</button>
+                            {/* <button onClick={() => navigator.clipboard.writeText(tempPwModal.password)} style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid var(--border2)" }}>Copiar</button> */}
+                            <button onClick={() => copyToClipboard(tempPwModal.password)} style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid var(--border2)" }}>Copiar</button>
                             <button onClick={() => setTempPwModal(null)} style={{ padding: "6px 12px", borderRadius: "var(--r)", background: "var(--accent2)", color: "#fff" }}>Cerrar</button>
                         </div>
                     </div>
