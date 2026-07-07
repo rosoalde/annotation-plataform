@@ -54,6 +54,12 @@ export default function AdminView() {
         },
     });
 
+    const resetPwMutation = useMutation({
+        mutationFn: (userId: string) => adminApi.resetPassword(userId),
+        onSuccess: (data) => showToast(`Contraseña temporal: ${data.temp_password}`),
+        onError: () => showToast("Error al resetear la contraseña", false),
+    });
+
     return (
         <div style={S.page}>
             <div style={S.topbar}>
@@ -127,6 +133,11 @@ export default function AdminView() {
                 <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "var(--muted)", margin: "26px 0 10px" }}>
                     Todos los usuarios
                 </div>
+                <button
+                    onClick={() => { if (confirm(`¿Resetear contraseña de ${u.username}?`)) resetPwMutation.mutate(u.id); }}
+                    style={{ fontSize: 10, padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--border2)", background: "transparent", color: "var(--muted)" }}>
+                    🔑 Reset
+                </button>
 
                 {loadingAll && <div style={{ color: "var(--muted)", padding: 12 }}>Cargando...</div>}
 

@@ -70,7 +70,25 @@ async def decide_user(
     await db.commit()
     return {"ok": True, "user_id": user.id, "status": user.status, "role": user.role}
 
+@router.post("/users/{user_id}/reset-password")
+async def reset_password(
+    user_id: str,
+    body: AdminPasswordReset,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user   = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, "Usuario no encontrado")
 
+    new_password = body.new_password or generate_temp_password()
+    if len(new_password) < 8:
+        raise HTTPException(400, "La contraseña debe tener al menos 8 caracteres")
+
+    user.hashed_pw = hash_password(new_password)
+    await db.commit()
+    return {"ok": True, "user_id": user.id, "temp_password": new_password}
 @router.post("/users/{user_id}/role")
 async def change_role(
     user_id: str,

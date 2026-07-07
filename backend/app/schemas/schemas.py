@@ -49,6 +49,9 @@ class UserApprovalDecision(BaseModel):
     decision: str            # "approve" | "reject"
     role: Optional[str] = None   # admin can override the requested role on approval
 
+class AdminPasswordReset(BaseModel):
+    new_password: Optional[str] = None   # si no se envía, se genera una temporal
+
 class UserOut(BaseModel):
     id: str
     username: str

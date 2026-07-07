@@ -63,6 +63,9 @@ export const adminApi = {
 
     changeRole: (userId: string, role: UserRole) =>
         http.post(`/admin/users/${userId}/role?role=${role}`).then((r) => r.data),
+
+    resetPassword: (userId: string, newPassword?: string) =>
+        http.post(`/admin/users/${userId}/reset-password`, { new_password: newPassword }).then((r) => r.data),
 };
 
 // ── Projects ──────────────────────────────────────────────────────────────

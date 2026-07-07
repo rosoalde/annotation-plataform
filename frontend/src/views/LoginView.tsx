@@ -122,6 +122,9 @@ export default function LoginView() {
                         {loading ? "..." : tab === "login" ? "Entrar →" : "Solicitar acceso →"}
                     </button>
                 </form>
+                <p style={{ fontSize: 11, color: "var(--muted)", textAlign: "center", marginTop: 10 }}>
+                    ¿Olvidaste tu contraseña? Pídele a un administrador que la resetee.
+                </p>
             </div>
         </div>
     );

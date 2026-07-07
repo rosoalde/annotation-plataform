@@ -11,6 +11,7 @@ from sqlalchemy import select
 
 from backend.app.core.database import get_db
 from backend.app.models.models import User
+import secrets
 
 SECRET_KEY  = os.getenv("SECRET_KEY", "change-me-in-production-use-32chars!")
 ALGORITHM   = "HS256"
@@ -23,6 +24,8 @@ bearer      = HTTPBearer()
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
+def generate_temp_password(length: int = 10) -> str:
+    return secrets.token_urlsafe(length)[:length]
 
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
