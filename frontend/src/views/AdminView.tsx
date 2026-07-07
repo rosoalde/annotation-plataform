@@ -18,6 +18,7 @@ const ROLE_OPTIONS: UserRole[] = ["annotator", "reviewer", "judge", "admin"];
 export default function AdminView() {
     const qc = useQueryClient();
     const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+    const [tempPwModal, setTempPwModal] = useState<{ username: string; password: string } | null>(null);
     const [roleOverride, setRoleOverride] = useState<Record<string, UserRole>>({});
 
     const showToast = (msg: string, ok = true) => {
@@ -56,7 +57,10 @@ export default function AdminView() {
 
     const resetPwMutation = useMutation({
         mutationFn: (userId: string) => adminApi.resetPassword(userId),
-        onSuccess: (data) => showToast(`Contraseña temporal: ${data.temp_password}`),
+        onSuccess: (data, userId) => {
+            const u = allUsers?.find((x) => x.id === userId);
+            setTempPwModal({ username: u?.username ?? "usuario", password: data.temp_password });
+        },
         onError: () => showToast("Error al resetear la contraseña", false),
     });
 
@@ -162,6 +166,26 @@ export default function AdminView() {
                     ))}
                 </div>
             </div>
+
+            {tempPwModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 20, maxWidth: 360 }}>
+                        <div style={{ fontSize: 13, marginBottom: 10 }}>
+                            Contraseña temporal para <b>{tempPwModal.username}</b>:
+                        </div>
+                        <div style={{ fontFamily: "monospace", fontSize: 16, background: "var(--card)", padding: "10px 14px", borderRadius: "var(--r)", marginBottom: 12, userSelect: "all" as const }}>
+                            {tempPwModal.password}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 14 }}>
+                            Copiala ahora y pasásela al usuario. No se va a volver a mostrar.
+                        </div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                            <button onClick={() => navigator.clipboard.writeText(tempPwModal.password)} style={{ padding: "6px 12px", borderRadius: "var(--r)", border: "1px solid var(--border2)" }}>Copiar</button>
+                            <button onClick={() => setTempPwModal(null)} style={{ padding: "6px 12px", borderRadius: "var(--r)", background: "var(--accent2)", color: "#fff" }}>Cerrar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {toast && <div style={{ ...S.toast, color: toast.ok ? "var(--green)" : "var(--amber)" }}>{toast.ok ? "✓ " : "⚠ "}{toast.msg}</div>}
         </div>

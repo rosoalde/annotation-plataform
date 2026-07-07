@@ -14,9 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from backend.app.core.database import get_db
-from backend.app.core.security import require_role
+from backend.app.core.security import require_role, hash_password, generate_temp_password
 from backend.app.models.models import User
-from backend.app.schemas.schemas import PendingUserOut, UserApprovalDecision, UserOut
+from backend.app.schemas.schemas import PendingUserOut, UserApprovalDecision, UserOut, AdminPasswordReset
 
 router = APIRouter(tags=["admin"])
 
