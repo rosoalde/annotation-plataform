@@ -30,6 +30,7 @@ async def _release_lock(db: AsyncSession, record_id: str, user_id: str):
 
 
 async def _update_record_status(db: AsyncSession, record_id: str):
+    await db.flush()   # hace visible la anotación actual antes de contar
     r = await db.execute(
         select(func.count(distinct(Annotation.annotator_id))).where(
             Annotation.record_id == record_id,

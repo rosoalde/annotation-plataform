@@ -422,6 +422,13 @@ export default function JudgeView() {
                                                         <span style={{ color: "var(--muted)" }}>🤖 LLM: </span>
                                                         <strong>{llmVal !== undefined ? (llmVal === 2 ? "N/A" : llmVal) : "—"}</strong>
                                                         {justif && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{justif}</div>}
+                                                        {llmVal !== undefined && (
+                                                            <button
+                                                                style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}
+                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                ← adoptar
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     {annotatorVals.length === 0 && (
                                                         <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Ningún anotador tocó este pilar</div>
@@ -452,13 +459,25 @@ export default function JudgeView() {
                                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada: {savedValue === 2 ? "N/A" : savedValue}</div>
                                                 )}
                                                 {sel !== undefined && (
-                                                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                                                        <button onClick={() => annotatorVals[0]
-                                                            ? judgeFieldMutation.mutate({ annotationId: annotatorVals[0].id, finalValue: sel as number })
-                                                            : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number })}
-                                                            style={{ padding: "3px 10px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer" }}>
-                                                            Guardar →
-                                                        </button>
+                                                    <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                                                        <textarea
+                                                            rows={1}
+                                                            placeholder="Motivo del juez (opcional)..."
+                                                            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
+                                                            value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                            onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
+                                                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                                                                    annotatorVals[0]
+                                                                        ? judgeFieldMutation.mutate({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason })
+                                                                        : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number });
+                                                                }}
+                                                                style={{ padding: "3px 10px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer" }}>
+                                                                Guardar →
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -561,19 +580,29 @@ export default function JudgeView() {
                                                     </button>
                                                 </div>
                                             ))}
+
                                             <input
                                                 style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "3px 7px", fontSize: 10, width: 120 }}
                                                 placeholder="Valor juez..."
                                                 value={draft}
                                                 onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
+                                            <input
+                                                style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "3px 7px", fontSize: 9, width: 120 }}
+                                                placeholder="Motivo (opcional)..."
+                                                value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                             <button
                                                 disabled={!draft}
-                                                onClick={() => existing
-                                                    ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft })
-                                                    : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft })}
+                                                onClick={() => {
+                                                    const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                                                    existing
+                                                        ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft, reason })
+                                                        : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft });
+                                                }}
                                                 style={{ padding: "3px 10px", borderRadius: "var(--r)", background: draft ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 10, cursor: draft ? "pointer" : "default" }}>
                                                 Guardar
                                             </button>
+
                                             {savedText !== undefined && judgeFields[jKey] === undefined && (
                                                 <span style={{ fontSize: 9, color: "var(--green)" }}>✓ guardado</span>
                                             )}

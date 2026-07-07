@@ -22,7 +22,7 @@ async def judge_records(
     current_user: User              = Depends(require_role("judge", "admin")),
 ):
     rec_result = await db.execute(
-        select(Record).where(Record.project_id == project_id, Record.status.in_(["annotated", "judged"]))
+        select(Record).where(Record.project_id == project_id, Record.status.in_(["annotated", "annotated_partial", "judged"]))
         .offset(offset).limit(limit)
     )
     records = rec_result.scalars().all()
