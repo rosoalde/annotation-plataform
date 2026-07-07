@@ -48,7 +48,7 @@ class User(Base):
     approved_by = Column(String, ForeignKey("users.id"), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     created_at  = Column(DateTime, default=datetime.utcnow)
-    must_change_password = Column(Boolean, nullable=False, default=False)
+    must_change_password = Column(Boolean, nullable=False, default=False, server_default="false")
 
     annotations = relationship("Annotation", back_populates="annotator", foreign_keys="Annotation.annotator_id")
     locks       = relationship("RecordLock", back_populates="user")

@@ -77,7 +77,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     token = create_access_token({"sub": user.id})
     return TokenResponse(
         access_token=token, user_id=user.id, username=user.username,
-        role=user.role, status=user.status, must_change_password=user.must_change_password,
+        role=user.role, status=user.status, must_change_password=bool(user.must_change_password),
     )
 
 
@@ -87,7 +87,7 @@ async def me(current_user: User = Depends(get_current_user)):
         "id": current_user.id, "username": current_user.username,
         "email": current_user.email, "role": current_user.role,
         "status": current_user.status,
-        "must_change_password": current_user.must_change_password,
+        "must_change_password": bool(current_user.must_change_password),
     }
 
 @router.post("/change-password")
