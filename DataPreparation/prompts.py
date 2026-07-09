@@ -1,41 +1,32 @@
-def build_system_prompt():
+def build_system_prompt() -> str:
     return (
-        "Eres un analista experto de social listening. "
-        "Devuelve SOLO una tool call válida con argumentos que respeten el schema. "
+        "Eres un analista experto de social listening para análisis de opinión pública. "
+        "Tu tarea es clasificar posts de redes sociales respecto a un tema dado. "
+        "Razona internamente sobre cada campo antes de decidir su valor. "
+        "Devuelve ÚNICAMENTE una tool call válida con argumentos que respeten el schema JSON. "
         "No escribas texto libre fuera de la herramienta. "
-        "Si pertinente es false, el resto de campos debe seguir siendo válido, con defaults razonables."
+        "Si pertinente es false, completa el resto de campos con valores neutros "
+        "(2 para pilares enteros, cadena vacía para texto)."
     )
 
 
-def build_user_prompt(tema, desc_tema, population_scope, languages, keywords, contenido, contexto_raiz):
-    langs = ", ".join(languages) if languages else "Cualquiera"
-    kws = ", ".join(keywords) if keywords else ""
-
-    return f"""
---- TEMA ---
+def build_user_prompt(tema: str, desc_tema: str, contenido: str) -> str:
+    return f"""--- TEMA ---
 {tema}
 
---- DESCRIPCIÓN ---
+--- DESCRIPCIÓN DEL TEMA ---
 {desc_tema}
 
---- CONTEXTO ---
-Idiomas permitidos: {langs}
-Ubicación permitida: {population_scope}
-Keywords: {kws}
-
---- CONTENIDO ---
+--- CONTENIDO A ANALIZAR ---
 {contenido}
 
---- CONTEXTO DEL POST RAÍZ ---
-{contexto_raiz}
-
 --- INSTRUCCIONES ---
-1. Decide si el contenido es pertinente para el tema.
-2. Si no es pertinente, marca pertinente=false y completa el resto.
-3. Si es pertinente, rellena todos los campos.
-4. 'topic' debe estar en castellano y ser específico.
-5. 'idioma' debe proponerse como códigos ISO 639-1 de 2 letras.
-6. 'pais' debe proponerse como nombres o códigos ISO 3166-1 alpha-2.
-7. 'continente' puede proponerse como nombre de continente o código breve.
-8. 'region' y 'ciudad' deben ser cadenas.
+1. Decide si el contenido es pertinente para el TEMA descrito arriba.
+2. Si no es pertinente → pertinente=false y completa el resto con defaults neutros.
+3. Si es pertinente → rellena todos los campos con precisión.
+4. 'topic' debe estar en castellano y ser específico al subtema del contenido.
+5. 'idioma' → lista de códigos ISO 639-1 de 2 letras (ej. ["es", "ca"]).
+6. 'pais'   → lista de códigos ISO 3166-1 alpha-2 (ej. ["ES", "FR"]).
+7. 'continente' → lista de códigos breves: EU, NA, SA, AF, AS, OC.
+8. 'region' y 'ciudad' → cadenas de texto o cadena vacía si no consta.
 """

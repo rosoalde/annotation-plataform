@@ -30,7 +30,8 @@ response = client.chat.completions.create(
     response_format={"type": "json_object"},
 )
 print(response)
-
+print(response.model_dump_json())
+'''
 # ChatCompletion(id='chatcmpl-914b22b52ecab831', 
 # choices=[Choice(finish_reason='stop', index=0, logprobs=None, 
 # message=ChatCompletionMessage(content='¡Hola! Como una inteligencia artificial, 
@@ -526,3 +527,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+'''    
