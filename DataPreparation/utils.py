@@ -1,3 +1,4 @@
+# DataPreparation/utils.py
 """
 utils.py — helpers compartidos para el pipeline de análisis LLM.
 """
@@ -20,8 +21,9 @@ from prompts import build_system_prompt, build_user_prompt
 
 logger = logging.getLogger(__name__)
 
-# ── Tablas de normalización ────────────────────────────────────────────────────
+# ── Recursos y tabas de normalización cargables ─────────────────────────────────
 
+# Valores por defecto (mantener compatibilidad)
 COUNTRY_TO_CONTINENT = {
     "ES":"EU","PT":"EU","FR":"EU","DE":"EU","IT":"EU","GB":"EU","IE":"EU",
     "NL":"EU","BE":"EU","CH":"EU","AT":"EU","SE":"EU","NO":"EU","DK":"EU",
@@ -59,6 +61,7 @@ LANG_ISO2 = {
     "italian":"it",
 }
 
+# DEFAULT_OUTPUT: añadir model_reasoning aquí
 DEFAULT_OUTPUT = {
     "pertinente": False,
     "sent_topic": 0, "topic": "",
@@ -71,7 +74,62 @@ DEFAULT_OUTPUT = {
     "region_just": "", "ciudad_just": "",
     "legitimacion_just": "", "efectividad_just": "",
     "justicia_eq_just": "", "confianza_just": "",
+    # Campo adicional para almacenar razonamiento del modelo (si está disponible)
+    "model_reasoning": "",
 }
+
+# Variables en memoria para recursos cargados
+_LOADED_LANG_MAP = {}
+_LOADED_COUNTRY_ALIAS = {}
+_LOADED_COUNTRY_TO_CONTINENT = dict(COUNTRY_TO_CONTINENT)
+
+
+# añadir cerca del inicio del fichero (tras definiciones básicas)
+def _load_normalization_resources():
+    global _LOADED_LANG_MAP, _LOADED_COUNTRY_ALIAS, _LOADED_COUNTRY_TO_CONTINENT
+    base = Path(__file__).resolve().parent
+    res_dir = base / "resources"
+    if not res_dir.exists():
+        logger.debug("No existe resources/: %s (skip)", res_dir)
+        return
+
+    lang_file = res_dir / "talkwalker_languages.json"
+    if lang_file.exists():
+        try:
+            data = json.loads(lang_file.read_text(encoding="utf-8"))
+            for entry in data:
+                iso = entry.get("iso1")
+                if not iso: continue
+                names = [entry.get("name")] + entry.get("aliases", [])
+                for a in names:
+                    if a:
+                        _LOADED_LANG_MAP[a.strip().lower()] = iso.strip().lower()
+            logger.debug("Loaded languages resources: %d entries", len(_LOADED_LANG_MAP))
+        except Exception as e:
+            logger.warning("Error cargando talkwalker_languages.json: %s", e)
+
+    country_file = res_dir / "talkwalker_countries.json"
+    if country_file.exists():
+        try:
+            data = json.loads(country_file.read_text(encoding="utf-8"))
+            for entry in data:
+                iso2 = entry.get("iso2")
+                if not iso2: continue
+                names = [entry.get("name")] + entry.get("aliases", [])
+                for a in names:
+                    if a:
+                        _LOADED_COUNTRY_ALIAS[a.strip().lower()] = iso2.strip().upper()
+                cont = entry.get("continent")
+                if cont:
+                    _LOADED_COUNTRY_TO_CONTINENT[iso2.strip().upper()] = cont.strip().upper()
+            logger.debug("Loaded countries resources: %d aliases", len(_LOADED_COUNTRY_ALIAS))
+        except Exception as e:
+            logger.warning("Error cargando talkwalker_countries.json: %s", e)
+
+
+# Cargar recursos al importar el módulo
+_load_normalization_resources()
+
 
 # ── Helpers de normalización ───────────────────────────────────────────────────
 
@@ -87,6 +145,7 @@ def detect_social(filename: str) -> Optional[str]:
     if "reddit"   in n: return "reddit"
     if "youtube"  in n: return "youtube"
     if "bluesky"  in n: return "bluesky"
+    if "twitter"  in n or "x_" in n or "x-" in n: return "twitter"
     return None
 
 
@@ -96,7 +155,13 @@ def normalize_language_list(values) -> list:
         raw = safe_text(v).lower()
         if not raw:
             continue
-        code = LANG_ISO2.get(raw, raw[:2] if len(raw) >= 2 else "")
+        # Primero intentar recursos cargados
+        code = _LOADED_LANG_MAP.get(raw)
+        if not code:
+            code = LANG_ISO2.get(raw)
+        if not code:
+            # fallback heurístico: tomar primeros 2 chars
+            code = raw[:2] if len(raw) >= 2 else ""
         if code and code not in out:
             out.append(code)
     return out
@@ -109,7 +174,10 @@ def normalize_country_list(values) -> list:
         if not raw:
             continue
         key = raw.lower()
-        code = ISO2_ALIAS.get(key, (raw.upper() if len(raw) == 2 and raw.isalpha() else raw.upper()[:2]))
+        # Preferir alias cargados
+        code = _LOADED_COUNTRY_ALIAS.get(key)
+        if not code:
+            code = ISO2_ALIAS.get(key, (raw.upper() if len(raw) == 2 and raw.isalpha() else raw.upper()[:2]))
         if code not in out:
             out.append(code)
     return out
@@ -118,7 +186,7 @@ def normalize_country_list(values) -> list:
 def countries_to_continents(country_codes) -> list:
     out = []
     for c in country_codes or []:
-        cont = COUNTRY_TO_CONTINENT.get(safe_text(c).upper())
+        cont = _LOADED_COUNTRY_TO_CONTINENT.get(safe_text(c).upper())
         if cont and cont not in out:
             out.append(cont)
     return out
@@ -132,11 +200,22 @@ def normalize_output(args: dict) -> dict:
         if k in args:
             out[k] = args[k]
 
+    # normalizaciones previas
     out["idioma"]     = normalize_language_list(out["idioma"] if isinstance(out["idioma"], list) else [out["idioma"]])
     out["pais"]       = normalize_country_list(out["pais"] if isinstance(out["pais"], list) else [out["pais"]])
     out["continente"] = normalize_country_list(out["continente"] if isinstance(out["continente"], list) else [out["continente"]])
+
+    # Si continentes no se detecta, inferir desde pais
     if not out["continente"]:
         out["continente"] = countries_to_continents(out["pais"])
+
+    # Si aun así quedan vacíos, poner N/A (requisito explícito)
+    if not out["idioma"]:
+        out["idioma"] = ["N/A"]
+    if not out["pais"]:
+        out["pais"] = ["N/A"]
+    if not out["continente"]:
+        out["continente"] = ["N/A"]
 
     try:
         out["sent_topic"] = int(out["sent_topic"])
@@ -195,7 +274,8 @@ def build_context(row, df: pd.DataFrame, social: str) -> str:
 
     return "\n\n".join(parts)
 
-# ── CSV helpers ────────────────────────────────────────────────────────────────
+
+# ── CSV helpers ──────────────────────────────────────────────────────────
 
 def prepare_dataframe(path: Path) -> pd.DataFrame:
     with open(path, encoding="utf-8", errors="ignore") as f:
@@ -230,7 +310,8 @@ def find_source_csvs(output_folder: str, sources: List[str]) -> List[Path]:
             result.append(p)
     return sorted(result)
 
-# ── Cliente LLM ───────────────────────────────────────────────────────────────
+
+# ── Cliente LLM ──────────────────────────────────────────────────────────
 
 _client: Optional[OpenAI] = None
 
@@ -245,7 +326,7 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
     """
     Llama al LLM con tool_calls (function calling).
     Usa temperature=0 + top_k=1 para respuestas deterministas.
-    Registra el campo 'reasoning' si el modelo lo emite (Qwen3/QwQ).
+    Registra el campo 'reasoning' si el modelo lo emite.
     """
     messages = [
         {"role": "system", "content": build_system_prompt()},
@@ -258,14 +339,15 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
                 model=MODEL_NAME,
                 messages=messages,
                 tools=[ANALYZE_POST_TOOL],
+                # Forzar elección de función analyze_post
                 tool_choice={"type": "function", "function": {"name": "analyze_post"}},
-                temperature=TEMPERATURE,   # 0 (config.py)
+                temperature=TEMPERATURE,
                 max_tokens=MAX_TOKENS,
-                extra_body={"top_k": TOP_K},  # vLLM: greedy-like (top_k=1)
+                extra_body={"top_k": TOP_K},
             )
             msg = resp.choices[0].message
 
-            # Reasoning chain (Qwen3 / QwQ; None en Qwen2.5)
+            # Reasoning chain (puede venir en msg.reasoning o en msg.content)
             reasoning = getattr(msg, "reasoning", None)
             if reasoning:
                 logger.debug("[reasoning] %s", str(reasoning)[:500])
@@ -276,6 +358,9 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
                 args = tool_calls[0].function.arguments
                 if isinstance(args, str):
                     args = json.loads(args)
+                # Añadir reasoning desde msg si existe
+                if reasoning and not args.get("model_reasoning"):
+                    args["model_reasoning"] = reasoning if isinstance(reasoning, str) else json.dumps(reasoning, ensure_ascii=False)
                 return normalize_output(args)
 
             # Fallback: el modelo devolvió JSON en texto libre
@@ -283,7 +368,11 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
             try:
                 args = json.loads(content)
             except json.JSONDecodeError:
+                # No es JSON → crear dict base vacío
                 args = {}
+            # Si el modelo no puso model_reasoning y razonamiento existe, añadirlo
+            if reasoning and not args.get("model_reasoning"):
+                args["model_reasoning"] = reasoning if isinstance(reasoning, str) else json.dumps(reasoning, ensure_ascii=False)
             return normalize_output(args)
 
         except Exception as exc:
@@ -295,7 +384,7 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
 
 
 def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
-    """Analiza todas las filas de un CSV y guarda el resultado en output_folder."""
+    """Analiza todas las filas de un CSV y guarda el resultado en el directorio DataPreparation."""
     social = detect_social(path.stem)
     if social is None:
         logger.warning("No se detectó red social para: %s", path.name)
@@ -306,8 +395,8 @@ def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
         logger.info("CSV vacío: %s", path.name)
         return None
 
-    df  = ensure_output_columns(df)
-    ok  = skip = error = 0
+    df = ensure_output_columns(df)
+    ok = skip = error = 0
 
     for idx, row in df.iterrows():
         contenido = safe_text(row.get("contenido"))
@@ -320,6 +409,7 @@ def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
             continue
         try:
             result = call_model(tema, desc_tema, contexto)
+            # Guardar valores normalizados; listas/dicts → JSON string
             for k in DEFAULT_OUTPUT:
                 v = result.get(k, DEFAULT_OUTPUT[k])
                 df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
@@ -328,7 +418,9 @@ def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
             logger.error("Error fila %d de %s: %s", idx, path.name, exc)
             error += 1
 
-    out_path = path.with_name(path.stem + OUTPUT_SUFFIX)
+    # Guardar salidas dentro del directorio DataPreparation (para centralizar)
+    out_dir = Path(__file__).resolve().parent
+    out_path = out_dir / (path.stem + OUTPUT_SUFFIX)
     df.to_csv(out_path, index=False, sep=";", encoding="utf-8")
     logger.info("%s → %s  [ok=%d  skip=%d  error=%d]", path.name, out_path.name, ok, skip, error)
     return str(out_path)

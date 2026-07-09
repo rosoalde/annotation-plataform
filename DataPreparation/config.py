@@ -14,3 +14,11 @@ OUTPUT_SUFFIX = "_reanalizado_schema.csv"
 
 VISION_HABILITADA = False
 TOP_K            = 1 
+
+FUNCTION_CALL_MODE = True
+
+MODEL_PARAMS = {
+    "temperature": TEMPERATURE,
+    "top_k": TOP_K,
+    "max_tokens": MAX_TOKENS,
+}
