@@ -368,20 +368,20 @@ async def export_judged(
                 "url_post":    rec.url_post,
                 "status":      rec.status,
                 # ── LLM original values (audit trail) ─────────────────────
-                "sentiment_llm":        rec.sentiment_llm,
-                "topic_llm":            rec.topic_llm,
-                "pertinencia_llm":      rec.pertinencia,
-                "posicion_llm":         rec.posicion,
-                "lang_llm":             rec.lang,
-                "world_continent_llm":  rec.world_continent,
-                "world_country_llm":    rec.world_country,
-                "world_region_llm":     rec.world_region,
-                "world_city_llm":       rec.world_city,
-                "codigo_pais_llm":      rec.codigo_pais,
-                "legitimacion_llm":     rec.legitimacion,
-                "efectividad_llm":      rec.efectividad,
-                "justicia_equidad_llm": rec.justicia_equidad,
-                "confianza_inst_llm":   rec.confianza_institucional,
+                # "sentiment_llm":        rec.sentiment_llm,
+                # "topic_llm":            rec.topic_llm,
+                # "pertinencia_llm":      rec.pertinencia,
+                # "posicion_llm":         rec.posicion,
+                # "lang_llm":             rec.lang,
+                # "world_continent_llm":  rec.world_continent,
+                # "world_country_llm":    rec.world_country,
+                # "world_region_llm":     rec.world_region,
+                # "world_city_llm":       rec.world_city,
+                # "codigo_pais_llm":      rec.codigo_pais,
+                # "legitimacion_llm":     rec.legitimacion,
+                # "efectividad_llm":      rec.efectividad,
+                # "justicia_equidad_llm": rec.justicia_equidad,
+                # "confianza_inst_llm":   rec.confianza_institucional,
                 # ── GOLD-STANDARD final values (judge OR LLM fallback) ─────
                 "sentiment_final":        sent_final,
                 "topic_final":            topic_final,
@@ -412,6 +412,10 @@ async def export_judged(
                 "judge_made_correction": judge_made_correction,
                 "judge_username":        judge_user,
                 # ── Project context ───────────────────────────────────────
+                "keywords_judge_accepted": [
+                    {"keyword": k.keyword, "reason": k.reason}
+                    for k in keywords_list if k.reviewer_decision == "accept"
+                ],
                 **project_meta,
             }
             rows_judge.append(row)

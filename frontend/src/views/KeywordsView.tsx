@@ -25,6 +25,7 @@ export default function KeywordsView() {
     const { id: projectId } = useParams<{ id: string }>();
     const qc = useQueryClient();
     const [newKw, setNewKw] = useState("");
+    const [addReason, setAddReason] = useState("");
 
     const { data: keywords, isLoading } = useQuery({
         queryKey: ["keywords", projectId],
@@ -33,13 +34,20 @@ export default function KeywordsView() {
     });
 
     const addMutation = useMutation({
-        mutationFn: (keyword: string) =>
+        mutationFn: () =>
             annotationsApi.saveKeyword(projectId!, {
-                project_id: projectId!, keyword, accepted: true, type: "manual",
+                project_id: projectId!,
+                keyword: newKw.trim(),
+                accepted: true,
+                type: "manual",
+                reason: addReason.trim() || undefined,
             }),
-        onSuccess: () => { setNewKw(""); qc.invalidateQueries({ queryKey: ["keywords", projectId] }); },
+        onSuccess: () => {
+            setNewKw("");
+            setAddReason("");
+            qc.invalidateQueries({ queryKey: ["keywords", projectId] });
+        },
     });
-
     const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
     const [rejectPending, setRejectPending] = useState<string | null>(null);
 
@@ -65,13 +73,28 @@ export default function KeywordsView() {
             <div style={S.content}>
                 <ProjectContextBar projectId={projectId!} />
 
-                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                    <input style={S.input} value={newKw} placeholder="Añadir término manualmente..."
-                        onChange={(e) => setNewKw(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && newKw.trim() && addMutation.mutate(newKw.trim())} />
-                    <button style={{ ...S.btn, background: "var(--accent)", color: "#fff" }}
-                        disabled={!newKw.trim() || addMutation.isPending}
-                        onClick={() => addMutation.mutate(newKw.trim())}>+ Añadir</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                            style={S.input}
+                            value={newKw}
+                            placeholder="Añadir término manualmente..."
+                            onChange={(e) => setNewKw(e.target.value)} />
+                        <button
+                            style={{ ...S.btn, background: "var(--accent)", color: "#fff" }}
+                            disabled={!newKw.trim() || !addReason.trim() || addMutation.isPending}
+                            onClick={() => addMutation.mutate()}>
+                            + Añadir
+                        </button>
+                    </div>
+                    <input
+                        style={{ ...S.input, fontSize: 11 }}
+                        value={addReason}
+                        placeholder="Motivo de la adición (obligatorio)..."
+                        onChange={(e) => setAddReason(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && newKw.trim() && addReason.trim()) addMutation.mutate();
+                        }} />
                 </div>
 
                 {isLoading && <div style={{ color: "var(--muted)" }}>Cargando...</div>}
