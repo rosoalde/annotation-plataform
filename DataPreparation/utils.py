@@ -17,13 +17,7 @@ from config import (
     TEMPERATURE, TOP_K, MAX_TOKENS, MAX_RETRIES, OUTPUT_SUFFIX,
 )
 from schema import ANALYZE_POST_TOOL
-def call_model(tema: str, desc_tema: str, contenido: str, topic_registry: "TopicRegistry | None" = None) -> dict:
-    from prompts import build_system_prompt, build_user_prompt  # ← aquí
-    known_topics = topic_registry.get() if topic_registry else []
-    messages = [
-        {"role": "system", "content": build_system_prompt()},
-        {"role": "user",   "content": build_user_prompt(tema, desc_tema, contenido, known_topics)},
-    ]
+
 logger = logging.getLogger(__name__)
 
 # ── Tablas de normalización ────────────────────────────────────────────────────
@@ -70,12 +64,12 @@ LANG_ISO2 = {
 # DEFAULT_OUTPUT: añadir model_reasoning aquí
 DEFAULT_OUTPUT = {
     "pertinente": False,
-    "sent_topic": 0, "topic": "",
+    "sent_subtopic": 0, "subtopic": "",
     "posicion": 2,
     "idioma": [], "continente": [], "pais": [],
     "region": "", "ciudad": "",
     "legitimacion": 2, "efectividad": 2, "justicia_eq": 2, "confianza": 2,
-    "sent_topic_just": "", "topic_just": "", "posicion_just": "",
+    "sent_subtopic_just": "", "subtopic_just": "", "posicion_just": "",
     "idioma_just": "", "continente_just": "", "pais_just": "",
     "region_just": "", "ciudad_just": "",
     "legitimacion_just": "", "efectividad_just": "",
@@ -85,45 +79,45 @@ DEFAULT_OUTPUT = {
 }
 
 
-class TopicRegistry:
+class SubTopicRegistry:
     """
-    Registry de topics por proyecto. Vive en output_folder/topic_registry.json.
+    Registry de subtopics por proyecto. Vive en output_folder/subtopic_registry.json.
     Thread-safe para procesos en el mismo intérprete.
-    Permite al LLM reutilizar topics ya vistos o crear nuevos.
+    Permite al LLM reutilizar subtopics ya vistos o crear nuevos.
     """
     _lock = threading.Lock()
 
     def __init__(self, output_folder: str):
-        self._path = Path(output_folder) / "topic_registry.json"
-        self._topics: list[str] = []
+        self._path = Path(output_folder) / "subtopic_registry.json"
+        self._subtopics: list[str] = []
         self._load()
 
     def _load(self):
         if self._path.exists():
             try:
                 data = json.loads(self._path.read_text(encoding="utf-8"))
-                self._topics = data if isinstance(data, list) else []
+                self._subtopics = data if isinstance(data, list) else []
             except Exception:
-                self._topics = []
+                self._subtopics = []
 
     def get(self) -> list[str]:
-        return list(self._topics)
+        return list(self._subtopics)
 
-    def update(self, new_topic: str):
-        """Añade new_topic si no existe ya (comparación case-insensitive). Persiste."""
-        if not new_topic or not new_topic.strip():
+    def update(self, new_subtopic: str):
+        """Añade new_subtopic si no existe ya (comparación case-insensitive). Persiste."""
+        if not new_subtopic or not new_subtopic.strip():
             return
-        norm = new_topic.strip().lower()
+        norm = new_subtopic.strip().lower()
         with self._lock:
-            if not any(t.lower() == norm for t in self._topics):
-                self._topics.append(new_topic.strip())
+            if not any(t.lower() == norm for t in self._subtopics):
+                self._subtopics.append(new_subtopic.strip())
                 try:
                     self._path.write_text(
-                        json.dumps(self._topics, ensure_ascii=False, indent=2),
+                        json.dumps(self._subtopics, ensure_ascii=False, indent=2),
                         encoding="utf-8"
                     )
                 except Exception as e:
-                    logger.warning("No se pudo guardar topic_registry.json: %s", e)
+                    logger.warning("No se pudo guardar subtopic_registry.json: %s", e)
 
 # Variables en memoria para recursos cargados
 _LOADED_LANG_MAP = {}
@@ -275,9 +269,9 @@ def normalize_output(args: dict) -> dict:
         out["continente"] = countries_to_continents(out["pais"])
 
     try:
-        out["sent_topic"] = int(out["sent_topic"])
-        if out["sent_topic"] not in (-1, 0, 1): out["sent_topic"] = 0
-    except Exception: out["sent_topic"] = 0
+        out["sent_subtopic"] = int(out["sent_subtopic"])
+        if out["sent_subtopic"] not in (-1, 0, 1): out["sent_subtopic"] = 0
+    except Exception: out["sent_subtopic"] = 0
 
     try:
         out["posicion"] = int(out["posicion"])
@@ -310,26 +304,37 @@ def build_context(row, df: pd.DataFrame, social: str) -> str:
     if contenido.lower() in {"[removed]", "[deleted]", ""}:
         return "BORRADO"
 
-    parts = [f"[CONTENIDO]\n{contenido}"]
-    tipo  = safe_text(row.get("tipo")).lower()
+    tipo = safe_text(row.get("tipo")).lower()
+    es_comentario = tipo in {"comentario", "comment", "reply"}
 
-    if social == "reddit" and tipo in {"comentario", "comment", "reply"}:
+    # Etiqueta de tipo: el prompt usa esta info para saber qué analizar
+    tipo_label = "COMENTARIO (respuesta a un post)" if es_comentario else "POST"
+    partes_previas = [f"[TIPO]\n{tipo_label}"]
+
+    partes_contenido = [f"[CONTENIDO]\n{contenido}"]
+
+    if social == "reddit" and es_comentario:
         root_id = safe_text(row.get("id_raiz"))
         if root_id and "id_raiz" in df.columns:
             mask   = (df["tipo"].astype(str).str.upper() == "POST") & (df["id_raiz"].astype(str) == root_id)
             parent = df[mask]
             if not parent.empty:
                 p_text = safe_text(parent.iloc[0].get("contenido"))
+                fuente = safe_text(parent.iloc[0].get("fuente"))
+                ctx_parts = []
+                if fuente:
+                    ctx_parts.append(f"[FUENTE]\n{fuente}")
                 if p_text:
-                    parts.insert(0, f"[POST RAÍZ]\n{p_text[:1500]}")
+                    ctx_parts.append(f"[POST RAÍZ]\n{p_text[:1500]}")
+                partes_previas.extend(ctx_parts)
 
     elif social == "youtube":
         titulo = safe_text(row.get("titulo_video"))
         trans  = safe_text(row.get("transcripcion"))
-        if titulo: parts.insert(0, f"[TÍTULO VIDEO]\n{titulo[:500]}")
-        if trans:  parts.insert(1, f"[TRANSCRIPCIÓN]\n{trans[:1500]}")
+        if titulo: partes_previas.append(f"[TÍTULO VIDEO]\n{titulo[:500]}")
+        if trans:  partes_previas.append(f"[TRANSCRIPCIÓN]\n{trans[:1500]}")
 
-    elif social == "bluesky" and tipo in {"comment", "comentario", "reply"}:
+    elif social == "bluesky" and es_comentario:
         parent_uri = safe_text(row.get("parent_uri"))
         if parent_uri and "uri" in df.columns:
             mask   = (df["tipo"].astype(str).str.lower() == "post") & (df["uri"].astype(str) == parent_uri)
@@ -337,9 +342,9 @@ def build_context(row, df: pd.DataFrame, social: str) -> str:
             if not parent.empty:
                 p_text = safe_text(parent.iloc[0].get("contenido"))
                 if p_text:
-                    parts.insert(0, f"[POST RAÍZ]\n{p_text[:1500]}")
+                    partes_previas.append(f"[POST RAÍZ]\n{p_text[:1500]}")
 
-    return "\n\n".join(parts)
+    return "\n\n".join(partes_previas + partes_contenido)
 
 
 # ── CSV helpers ──────────────────────────────────────────────────────────
@@ -389,15 +394,17 @@ def get_client() -> OpenAI:
     return _client
 
 
-def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
+def call_model(tema: str, desc_tema: str, contenido: str, subtopic_registry: "SubtopicRegistry | None" = None) -> dict:
     """
     Llama al LLM con tool_calls (function calling).
     Usa temperature=0 + top_k=1 para respuestas deterministas.
     Registra el campo 'reasoning' si el modelo lo emite (Qwen3/QwQ).
     """
+    from prompts import build_system_prompt, build_user_prompt
+    known_subtopics = subtopic_registry.get() if subtopic_registry else []
     messages = [
         {"role": "system", "content": build_system_prompt()},
-        {"role": "user",   "content": build_user_prompt(tema, desc_tema, contenido)},
+        {"role": "user",   "content": build_user_prompt(tema, desc_tema, contenido, known_subtopics)},
     ]
     last_err = None
     for attempt in range(MAX_RETRIES):
@@ -424,7 +431,10 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
                 args = tool_calls[0].function.arguments
                 if isinstance(args, str):
                     args = json.loads(args)
-                return normalize_output(args)
+                result_out = normalize_output(args)    # ← antes hacía return aquí directamente
+                if subtopic_registry and result_out.get("subtopic"):
+                    subtopic_registry.update(result_out["subtopic"])
+                return result_out
 
             # Fallback: el modelo devolvió JSON en texto libre
             content = msg.content or "{}"
@@ -432,7 +442,10 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
                 args = json.loads(content)
             except json.JSONDecodeError:
                 args = {}
-            return normalize_output(args)
+            result_out = normalize_output(args)        # ← ídem
+            if subtopic_registry and result_out.get("subtopic"):
+                subtopic_registry.update(result_out["subtopic"])
+            return result_out
 
         except Exception as exc:
             last_err = exc
@@ -442,7 +455,7 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
     raise RuntimeError(f"Modelo no respondió tras {MAX_RETRIES} intentos") from last_err
 
 
-def run_file(path: Path, tema: str, desc_tema: str, topic_registry: "TopicRegistry | None" = None) -> Optional[str]:
+def run_file(path: Path, tema: str, desc_tema: str, subtopic_registry: "SubtopicRegistry | None" = None) -> Optional[str]:
     """Analiza todas las filas de un CSV y guarda el resultado en output_folder."""
     social = detect_social(path.stem)
     if social is None:
@@ -467,7 +480,7 @@ def run_file(path: Path, tema: str, desc_tema: str, topic_registry: "TopicRegist
             skip += 1
             continue
         try:
-            result = call_model(tema, desc_tema, contexto, topic_registry=topic_registry)
+            result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
             for k in DEFAULT_OUTPUT:
                 v = result.get(k, DEFAULT_OUTPUT[k])
                 df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)

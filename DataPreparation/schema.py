@@ -9,7 +9,7 @@ ANALYZE_POST_TOOL = {
         "name": "analyze_post",
         "description": (
             "Analiza un contenido de redes sociales en relación con un tema dado. "
-            "Extrae: pertinencia, topic específico, sentimiento hacia el topic, "
+            "Extrae: pertinencia, subtopic específico, sentimiento hacia el subtopic, "
             "postura (stance) hacia el tema principal, idioma, geolocalización inferida, "
             "y cuatro pilares de legitimación política. "
             "Devuelve SIEMPRE un único objeto JSON con todas las propiedades del schema."
@@ -18,8 +18,8 @@ ANALYZE_POST_TOOL = {
             "type": "object",
             "required": [
                 "pertinente",
-                "sent_topic", 
-                "topic",
+                "sent_subtopic", 
+                "subtopic",
                 "posicion",
                 "idioma", 
                 "continente", 
@@ -30,8 +30,8 @@ ANALYZE_POST_TOOL = {
                 "efectividad", 
                 "justicia_eq", 
                 "confianza",
-                "sent_topic_just", 
-                "topic_just", 
+                "sent_subtopic_just", 
+                "subtopic_just", 
                 "posicion_just",
                 "idioma_just", 
                 "continente_just", 
@@ -54,8 +54,8 @@ ANALYZE_POST_TOOL = {
                     ),
                 },
 
-                # ── Topic / subtopic ───────────────────────────────────────────
-                "topic": {
+                # ── Subtopic ──────────────────────────────────────────────────
+                "subtopic": {
                     "type": "string",
                     "description": (
                         "Subtopic específico mencionado en el contenido, en castellano, "
@@ -64,13 +64,13 @@ ANALYZE_POST_TOOL = {
                         "Si el contenido no es pertinente, devuelve cadena vacía."
                     ),
                 },
-                "topic_just": {
+                "subtopic_just": {
                     "type": "string",
                     "description": "Justificación breve (≤150 chars) de por qué ese subtopic.",
                 },
 
-                # ── Sentimiento hacia el topic ─────────────────────────────────
-                "sent_topic": {
+                # ── Sentimiento hacia el subtopic ─────────────────────────────────
+                "sent_subtopic": {
                     "type": "integer",
                     "enum": [-1, 0, 1],
                     "description": (
@@ -80,7 +80,7 @@ ANALYZE_POST_TOOL = {
                         "Ej: 'Me alegra que hayan rechazado esa medida' → sent_topic=1 (alegría) pero posicion=-1 (contra la medida)."
                     ),
                 },
-                "sent_topic_just": {
+                "sent_subtopic_just": {
                     "type": "string",
                     "description": "Justificación breve (≤150 chars) del sentimiento detectado.",
                 },
