@@ -16,8 +16,9 @@ from config import (
     TEMPERATURE, TOP_K, MAX_TOKENS, MAX_RETRIES, OUTPUT_SUFFIX,
 )
 from schema import ANALYZE_POST_TOOL
-from prompts import build_system_prompt, build_user_prompt
-
+def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
+    from prompts import build_system_prompt, build_user_prompt  # ← aquí
+    messages = [...]
 logger = logging.getLogger(__name__)
 
 # ── Tablas de normalización ────────────────────────────────────────────────────
