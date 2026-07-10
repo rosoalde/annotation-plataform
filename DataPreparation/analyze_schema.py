@@ -47,11 +47,15 @@ def run_project(project: dict) -> list:
         logger.warning("  ⚠ No se encontraron CSVs en %s", output_folder)
         return []
 
+    from utils import TopicRegistry   # evita circular si utils ya importó analyze_schema
+    registry = TopicRegistry(output_folder)
+    logger.info("  topic_registry: %d topics cargados de sesión anterior", len(registry.get()))
+
     results = []
     for csv_path in csvs:
         logger.info("  → Procesando: %s", csv_path.name)
         try:
-            out = run_file(csv_path, tema, desc_tema)
+            out = run_file(csv_path, tema, desc_tema, topic_registry=registry)
             if out:
                 results.append(out)
         except Exception as exc:

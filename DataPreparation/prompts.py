@@ -33,7 +33,21 @@ def build_system_prompt() -> str:
         "Si el runtime admite razonamiento estructurado, inclúyelo en model_reasoning (≤300 chars)."
     )
 
-def build_user_prompt(tema: str, desc_tema: str, contenido: str) -> str:
+def build_user_prompt(tema: str, desc_tema: str, contenido: str, known_topics: list = None) -> str:
+    if known_topics:
+        topic_seed_block = (
+            f"4) SUBTOPIC (topic): Ya tenemos {len(known_topics)} topics identificados para este proyecto:\n"
+            f"   {', '.join(known_topics)}\n"
+            f"   Intenta asignar el contenido a UNO de estos topics (elige el más específico y preciso).\n"
+            f"   Si NINGUNO encaja bien, crea un topic nuevo en 2-5 palabras en castellano.\n"
+            f"   No repitas el tema principal ({tema}). Sé específico: no uses el topic genérico si hay uno más preciso."
+        )
+    else:
+        topic_seed_block = (
+            f"4) SUBTOPIC (topic): Extrae el aspecto concreto del contenido en 2-5 palabras en castellano.\n"
+            f"   No repitas el tema principal ({tema}).\n"
+            f"   Ej: si el tema es 'plan de vivienda', el topic podría ser 'precio del alquiler', 'acceso hipotecario', etc."
+        )
     return f"""--- CONTEXTO (NO MODIFICAR) ---
 TEMA:
 {tema}
@@ -55,9 +69,7 @@ INSTRUCCIONES (OBLIGATORIO)
    IMPORTANTE: un mismo texto puede tener sent_topic negativo y posicion positiva (y viceversa).
    La ironía y el sarcasmo invierten la postura respecto al sentimiento superficial.
 
-4) SUBTOPIC (topic): Extrae el aspecto concreto del contenido en 2-5 palabras en castellano.
-   No repitas el tema principal. Ej: si el tema es "plan de vivienda", el topic podría ser
-   "precio del alquiler", "acceso hipotecario", "vivienda pública", etc.
+{topic_seed_block}
 
 5) GEOLOCALIZACIÓN: Basa la detección en evidencias explícitas del texto.
    - idioma: código ISO 639-1 del idioma del texto (no del país al que se refiere).

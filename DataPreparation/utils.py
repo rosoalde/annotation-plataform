@@ -5,6 +5,7 @@ utils.py — helpers compartidos para el pipeline de análisis LLM.
 import json
 import logging
 import time
+import threading
 from pathlib import Path
 from typing import Optional, List
 
@@ -16,9 +17,13 @@ from config import (
     TEMPERATURE, TOP_K, MAX_TOKENS, MAX_RETRIES, OUTPUT_SUFFIX,
 )
 from schema import ANALYZE_POST_TOOL
-def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
+def call_model(tema: str, desc_tema: str, contenido: str, topic_registry: "TopicRegistry | None" = None) -> dict:
     from prompts import build_system_prompt, build_user_prompt  # ← aquí
-    messages = [...]
+    known_topics = topic_registry.get() if topic_registry else []
+    messages = [
+        {"role": "system", "content": build_system_prompt()},
+        {"role": "user",   "content": build_user_prompt(tema, desc_tema, contenido, known_topics)},
+    ]
 logger = logging.getLogger(__name__)
 
 # ── Tablas de normalización ────────────────────────────────────────────────────
@@ -60,6 +65,8 @@ LANG_ISO2 = {
     "italian":"it",
 }
 
+
+
 # DEFAULT_OUTPUT: añadir model_reasoning aquí
 DEFAULT_OUTPUT = {
     "pertinente": False,
@@ -76,6 +83,47 @@ DEFAULT_OUTPUT = {
     # Campo adicional para almacenar razonamiento del modelo (si está disponible)
     "model_reasoning": "",
 }
+
+
+class TopicRegistry:
+    """
+    Registry de topics por proyecto. Vive en output_folder/topic_registry.json.
+    Thread-safe para procesos en el mismo intérprete.
+    Permite al LLM reutilizar topics ya vistos o crear nuevos.
+    """
+    _lock = threading.Lock()
+
+    def __init__(self, output_folder: str):
+        self._path = Path(output_folder) / "topic_registry.json"
+        self._topics: list[str] = []
+        self._load()
+
+    def _load(self):
+        if self._path.exists():
+            try:
+                data = json.loads(self._path.read_text(encoding="utf-8"))
+                self._topics = data if isinstance(data, list) else []
+            except Exception:
+                self._topics = []
+
+    def get(self) -> list[str]:
+        return list(self._topics)
+
+    def update(self, new_topic: str):
+        """Añade new_topic si no existe ya (comparación case-insensitive). Persiste."""
+        if not new_topic or not new_topic.strip():
+            return
+        norm = new_topic.strip().lower()
+        with self._lock:
+            if not any(t.lower() == norm for t in self._topics):
+                self._topics.append(new_topic.strip())
+                try:
+                    self._path.write_text(
+                        json.dumps(self._topics, ensure_ascii=False, indent=2),
+                        encoding="utf-8"
+                    )
+                except Exception as e:
+                    logger.warning("No se pudo guardar topic_registry.json: %s", e)
 
 # Variables en memoria para recursos cargados
 _LOADED_LANG_MAP = {}
@@ -394,7 +442,7 @@ def call_model(tema: str, desc_tema: str, contenido: str) -> dict:
     raise RuntimeError(f"Modelo no respondió tras {MAX_RETRIES} intentos") from last_err
 
 
-def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
+def run_file(path: Path, tema: str, desc_tema: str, topic_registry: "TopicRegistry | None" = None) -> Optional[str]:
     """Analiza todas las filas de un CSV y guarda el resultado en output_folder."""
     social = detect_social(path.stem)
     if social is None:
@@ -419,7 +467,7 @@ def run_file(path: Path, tema: str, desc_tema: str) -> Optional[str]:
             skip += 1
             continue
         try:
-            result = call_model(tema, desc_tema, contexto)
+            result = call_model(tema, desc_tema, contexto, topic_registry=topic_registry)
             for k in DEFAULT_OUTPUT:
                 v = result.get(k, DEFAULT_OUTPUT[k])
                 df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
