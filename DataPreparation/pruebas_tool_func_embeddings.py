@@ -6,6 +6,14 @@ import pandas as pd
 from openai import OpenAI
 
 MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+#vllm serve Qwen/Qwen2.5-14B-Instruct-AWQ \
+    # --port 8001 \
+    # --dtype float16 \
+    # --quantization awq \
+    # --max-model-len 32768 \
+    # --gpu-memory-utilization 0.85 \
+    # --enable-auto-tool-choice \
+    # --tool-call-parser hermes
 # MODEL_NAME = "intfloat/e5-mistral-7b-instruct"
 #vllm serve intfloat/e5-mistral-7b-instruct \
 #   --port 8001 \

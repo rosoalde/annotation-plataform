@@ -1,6 +1,6 @@
 import os
 MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct-AWQ"
-BASE_URL = "http://host.docker.internal:8001/v1"
+BASE_URL = "http://localhost:8001/v1"
 API_KEY = "local-token"
 
 TEMPERATURE = 0

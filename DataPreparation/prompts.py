@@ -79,14 +79,14 @@ def build_user_prompt(tema: str, desc_tema: str, contenido: str, known_topics: l
 
     # Bloque de subtopics conocidos
     if known_topics:
-        topic_block = (
+        subtopic_block = (
             f"SUBTOPICS YA IDENTIFICADOS EN ESTE PROYECTO ({len(known_topics)}):\n"
             + ", ".join(known_topics) + "\n"
             "→ Si el argumento del [CONTENIDO] encaja con uno de estos, reutiliza EXACTAMENTE ese texto.\n"
             f"→ Si no encaja con ninguno, crea uno nuevo en 2-5 palabras en castellano sin repetir '{tema}'."
         )
     else:
-        topic_block = (
+        subtopic_block = (
             f"Extrae el aspecto concreto mencionado o inferido de forma muy clara en 2-5 palabras en castellano.\n"
             f"No uses el tema principal ('{tema}') como subtopic.\n"
             f"Describe el ASPECTO concreto del [CONTENIDO].\n"
@@ -142,7 +142,7 @@ REGLAS CRÍTICAS:
 - En caso de duda entre 0 y 2 → usa 0.
 
 === PASO 3 — SUBTOPIC ===
-{topic_block}
+{subtopic_block}
 
 === PASO 4 — IDIOMA Y GEOLOCALIZACIÓN ===
 Detección libre basada en evidencias del [CONTENIDO] o del contexto auxiliar:

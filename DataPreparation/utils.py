@@ -419,7 +419,7 @@ def call_model(tema: str, desc_tema: str, contenido: str, subtopic_registry: "Su
                 extra_body={"top_k": TOP_K},  # vLLM: greedy-like (top_k=1)
             )
             msg = resp.choices[0].message
-
+            print(resp.model_dump_json(indent=2))  # DEBUG: ver respuesta completa del modelo
             # Reasoning chain (Qwen3 / QwQ; None en Qwen2.5)
             reasoning = getattr(msg, "reasoning", None)
             if reasoning:
