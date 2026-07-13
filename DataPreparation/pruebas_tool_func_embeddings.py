@@ -134,6 +134,7 @@ DEFAULT_OUTPUT = {
     "efectividad": 2,
     "justicia_eq": 2,
     "confianza": 2,
+    "pertinente_just": "",
     "sent_topic_just": "",
     "topic_just": "",
     "posicion_just": "",

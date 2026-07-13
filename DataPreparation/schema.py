@@ -30,6 +30,7 @@ ANALYZE_POST_TOOL = {
                 "efectividad", 
                 "justicia_eq", 
                 "confianza",
+                "pertinente_just",
                 "sent_subtopic_just", 
                 "subtopic_just", 
                 "posicion_just",
@@ -52,6 +53,10 @@ ANALYZE_POST_TOOL = {
                         "true si el contenido cuando tiene que ver con el tema principal de estudio o cuando pertenece o se corresponde con el tema principal de estudio. "
                         "false si el contenido se desvía del tema principal y no aporta información útil para comprenderlo, resolverlo o evaluarlo (spam, off-topic, contenido borrado)."
                     ),
+                },
+                "pertinente_just": {
+                    "type": "string",
+                    "description": "Justificación breve (≤150 chars) de por qué ese contenido es pertinente.",
                 },
 
                 # ── Subtopic ──────────────────────────────────────────────────

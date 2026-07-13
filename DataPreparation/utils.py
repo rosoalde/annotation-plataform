@@ -69,7 +69,7 @@ DEFAULT_OUTPUT = {
     "idioma": [], "continente": [], "pais": [],
     "region": "", "ciudad": "",
     "legitimacion": 2, "efectividad": 2, "justicia_eq": 2, "confianza": 2,
-    "sent_subtopic_just": "", "subtopic_just": "", "posicion_just": "",
+    "pertinente_just": "", "sent_subtopic_just": "", "subtopic_just": "", "posicion_just": "",
     "idioma_just": "", "continente_just": "", "pais_just": "",
     "region_just": "", "ciudad_just": "",
     "legitimacion_just": "", "efectividad_just": "",
