@@ -420,6 +420,9 @@ def call_model(tema: str, desc_tema: str, contenido: str, subtopic_registry: "Su
             )
             msg = resp.choices[0].message
             print(resp.model_dump_json(indent=2))  # DEBUG: ver respuesta completa del modelo
+            print("========================================")
+            print(resp.choices[0].messages.tool_calls[0].function.arguments)  # DEBUG: ver tool_calls
+            print("========================================")
             # Reasoning chain (Qwen3 / QwQ; None en Qwen2.5)
             reasoning = getattr(msg, "reasoning", None)
             if reasoning:
