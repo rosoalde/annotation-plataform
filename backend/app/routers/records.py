@@ -223,10 +223,57 @@ async def import_records_csv(
     added = 0
     skipped = 0
     errors = []
-
+    CSV_COLUMN_MAP = {
+        "contenido":           "content",
+        "sent_subtopic":       "sentiment_llm",
+        "subtopic":            "topic_llm",
+        "idioma":              "lang",
+        "continente":          "world_continent",
+        "pais":                "world_country",
+        "region":              "world_region",
+        "ciudad":              "world_city",
+        "justicia_eq":         "justicia_equidad",
+        "confianza":           "confianza_institucional",
+        "sent_subtopic_just":  "justif_sentimiento",
+        "subtopic_just":       "justif_topic",
+        "posicion_just":       "justif_posicion",
+        "idioma_just":         "justif_lang",
+        "continente_just":     "justif_continente",
+        "pais_just":           "justif_pais",
+        "region_just":         "justif_region",
+        "ciudad_just":         "justif_ciudad",
+        "legitimacion_just":   "justif_legitimacion",
+        "efectividad_just":    "justif_efectividad",
+        "justicia_eq_just":    "justif_justicia_equidad",
+        "confianza_just":      "justif_confianza_institucional",
+        # YouTube: reutiliza campos de contexto existentes
+        "titulo_video":        "titulo_padre",
+        "canal":               "fuente",
+        # Bluesky: el uri actúa como external_id
+        "uri":                 "url_post",
+    }
     for i, row in enumerate(rows):
-        # Limpiar: convertir cadenas vacías a None para campos opcionales
+        # # 1. Renombrar columnas según el mapa
+        row = {CSV_COLUMN_MAP.get(k, k): v for k, v in row.items()}
+
+        # 2. Convertir cadenas vacías a None
         cleaned = {k: (v if v != "" else None) for k, v in row.items()}
+        # 3. pertinente (bool/string) → pertinencia (string)
+        if "pertinente" in cleaned and cleaned["pertinente"] is not None:
+            v = str(cleaned.pop("pertinente")).strip().lower()
+            cleaned["pertinencia"] = "relevante" if v in ("true", "si", "sí", "1") else "irrelevante"
+
+        # 4. Desempaquetar listas JSON en campos geo (["es"] → "es")
+        for geo_field in ("lang", "world_continent", "world_country"):
+            val = cleaned.get(geo_field)
+            if val and str(val).startswith("["):
+                try:
+                    import json
+                    parsed = json.loads(val.replace('""', '"'))
+                    if isinstance(parsed, list) and parsed:
+                        cleaned[geo_field] = parsed[0] if parsed[0] != "N/A" else None
+                except Exception:
+                    pass
         try:
             from backend.app.schemas.schemas import RecordImportItem
             item = RecordImportItem(**cleaned)
@@ -255,6 +302,8 @@ async def import_records_csv(
             descripcion_padre=item.descripcion_padre,
             tweet_anterior=item.tweet_anterior,
             idioma_ia=item.idioma_ia,
+            model_reasoning  = item.model_reasoning,
+            relevancia_ia    = item.relevancia_ia,
             lang=item.lang,
             world_continent=item.world_continent,
             world_country=item.world_country,

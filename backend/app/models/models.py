@@ -108,7 +108,8 @@ class Record(Base):
     descripcion_padre       = Column(Text, nullable=True)
     tweet_anterior          = Column(Text, nullable=True)
     idioma_ia               = Column(String(50), nullable=True)   # legacy field, kept for compatibility
-
+    relevancia_ia    = Column(String(5),   nullable=True)   # "SI" / "NO" del filtro LLM
+    model_reasoning  = Column(Text,        nullable=True)   # cadena de razonamiento del LLM
     # ── New: language + geolocation produced by the LLM pass ──────────────
     lang             = Column(String(10),  nullable=True)   # e.g. "es", "en", "pt"
     world_continent  = Column(String(50),  nullable=True)

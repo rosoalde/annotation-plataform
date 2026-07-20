@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional, List, Any
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ class ProjectOut(BaseModel):
 class RecordOut(BaseModel):
     id: str
     external_id: Optional[str]
-    content: str
+    content: Optional[str] = None
     platform: Optional[str]
     tipo: Optional[str]
     fecha: Optional[str]
@@ -151,6 +151,7 @@ class RecordListResponse(BaseModel):
     limit: int
 
 class RecordImportItem(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
     external_id: Optional[str] = None
     content: str
     platform: Optional[str] = None
@@ -162,6 +163,8 @@ class RecordImportItem(BaseModel):
     descripcion_padre: Optional[str] = None
     tweet_anterior: Optional[str] = None
     idioma_ia: Optional[str] = None
+    model_reasoning: Optional[str] = None
+    relevancia_ia:   Optional[str] = None
     # New columns expected from the LLM re-analysis CSV export
     lang: Optional[str] = None
     world_continent: Optional[str] = None

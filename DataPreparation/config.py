@@ -4,7 +4,7 @@ BASE_URL = "http://localhost:8001/v1"
 API_KEY = "local-token"
 
 TEMPERATURE = 0
-MAX_TOKENS = 2500
+MAX_TOKENS = 3000
 MAX_RETRIES = 2
 MICRO_BATCH_SIZE = 32
 
