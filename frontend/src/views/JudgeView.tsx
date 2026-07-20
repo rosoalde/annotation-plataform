@@ -89,6 +89,7 @@ export default function JudgeView() {
         { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
         // { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
         // { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
+        { key: "lang", label: "Idioma", justifKey: "justif_lang" },
         { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
         { key: "world_country", label: "País", justifKey: "justif_pais" },
         { key: "world_region", label: "Región", justifKey: "justif_region" },

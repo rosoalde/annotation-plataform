@@ -78,7 +78,7 @@ export interface Record {
     cuerpo_padre?: string;
     descripcion_padre?: string;
     tweet_anterior?: string;
-    idioma?: string;
+    // idioma?: string;
     // Produced by the LLM re-analysis pass, imported as CSV columns:
     // lang, world_continent, world_country, world_region, world_city
     lang?: string;

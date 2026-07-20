@@ -44,7 +44,7 @@ const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
 const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
     { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
     { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
-    { key: "idioma", label: "Idioma", justifKey: "justif_lang" },
+    { key: "lang", label: "Idioma", justifKey: "justif_lang" },
     { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
     { key: "world_country", label: "País", justifKey: "justif_pais" },
     { key: "world_region", label: "Región", justifKey: "justif_region" },
@@ -393,7 +393,7 @@ export default function AnnotateView() {
                                                                 ))}
                                                             </datalist>
                                                         </>
-                                                    ) : f.key === "idioma" ? (
+                                                    ) : f.key === "lang" ? (
                                                         <>
                                                             <input list={`langs-${rec.id}`} style={{ ...S.input, marginTop: 6 }} value={current}
                                                                 onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
