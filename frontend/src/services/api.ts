@@ -100,8 +100,7 @@ export const recordsApi = {
         form.append("meta_json", JSON.stringify(metaJson ?? {}));
         return http.post<CsvImportResult>(
             `/projects/${projectId}/records/import-csv`,
-            form,
-            { headers: { "Content-Type": "multipart/form-data" } }
+            form
         ).then((r) => r.data);
     },
 };

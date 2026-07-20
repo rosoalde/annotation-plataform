@@ -16,20 +16,6 @@ import type { CsvImportResult } from "../types";
 import ProjectContextBar from "../components/ProjectContextBar";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
-
-function parseCsvPreview(text: string): { headers: string[]; rows: string[][] } {
-    // Manejar BOM de Excel
-    const clean = text.replace(/^\uFEFF/, "");
-    const lines = clean.split(/\r?\n/).filter(Boolean);
-    if (lines.length === 0) return { headers: [], rows: [] };
-    const delimiter = lines[0]?.includes(";") && !lines[0]?.includes(",") ? ";" : ",";
-    const split = (line: string) => line.split(delimiter).map((c) => c.replace(/^"|"$/g, "").trim());
-    const rawHeaders = split(lines[0]);
-    const headers = rawHeaders.map(h => CSV_COLUMN_MAP[h] ?? h);
-    const rows = lines.slice(1, 6).map(split);   // primeras 5 filas
-    return { headers, rows };
-}
-
 // AÑADIR después de parseCsvPreview (línea ~29):
 const CSV_COLUMN_MAP: Record<string, string> = {
     "contenido": "content",
@@ -58,6 +44,31 @@ const CSV_COLUMN_MAP: Record<string, string> = {
     "canal": "fuente",
     "uri": "url_post",
 };
+function parseCsvPreview(text: string): { headers: string[]; rows: string[][] } {
+    // Manejar BOM de Excel
+    const clean = text.replace(/^\uFEFF/, "");
+    // const lines = clean.split(/\r?\n/).filter(Boolean);
+    const lines: string[] = [];
+    let inQuote = false;
+    let current = "";
+    for (const char of clean) {
+        if (char === '"') { inQuote = !inQuote; current += char; }
+        else if ((char === "\n" || char === "\r") && !inQuote) {
+            if (current.trim()) lines.push(current);
+            current = "";
+        } else { current += char; }
+    }
+    if (current.trim()) lines.push(current);
+    if (lines.length === 0) return { headers: [], rows: [] };
+    const delimiter = lines[0]?.includes(";") && !lines[0]?.includes(",") ? ";" : ",";
+    const split = (line: string) => line.split(delimiter).map((c) => c.replace(/^"|"$/g, "").trim());
+    const rawHeaders = split(lines[0]);
+    const headers = rawHeaders.map(h => CSV_COLUMN_MAP[h] ?? h);
+    const rows = lines.slice(1, 6).map(split);   // primeras 5 filas
+    return { headers, rows };
+}
+
+
 
 // Columnas del CSV que esta plataforma reconoce (para mostrar al usuario qué se detectó)
 const KNOWN_COLS = new Set([
