@@ -151,7 +151,7 @@ class RecordListResponse(BaseModel):
     limit: int
 
 class RecordImportItem(BaseModel):
-    model_config = ConfigDict(protected_namespaces=())
+    model_config = ConfigDict(protected_namespaces=(), extra="ignore")
     external_id: Optional[str] = None
     content: str
     platform: Optional[str] = None

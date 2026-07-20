@@ -22,7 +22,8 @@ function parseCsvPreview(text: string): { headers: string[]; rows: string[][] } 
     const clean = text.replace(/^\uFEFF/, "");
     const lines = clean.split(/\r?\n/).filter(Boolean);
     if (lines.length === 0) return { headers: [], rows: [] };
-    const split = (line: string) => line.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
+    const delimiter = lines[0]?.includes(";") && !lines[0]?.includes(",") ? ";" : ",";
+    const split = (line: string) => line.split(delimiter).map((c) => c.replace(/^"|"$/g, "").trim());
     const headers = split(lines[0]);
     const rows = lines.slice(1, 6).map(split);   // primeras 5 filas
     return { headers, rows };
@@ -35,6 +36,7 @@ const KNOWN_COLS = new Set([
     "idioma_ia", "lang", "world_continent", "world_country", "world_region", "world_city",
     "sentiment_llm", "topic_llm", "legitimacion", "efectividad",
     "justicia_equidad", "confianza_institucional",
+    "relevancia_ia", "pertinente", "model_reasoning",
     "url_post", "pertinencia", "justif_pertinencia", "posicion", "justif_posicion",
     "justif_topic", "justif_sentimiento",
     "justif_legitimacion", "justif_efectividad", "justif_justicia_equidad",

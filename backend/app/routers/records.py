@@ -211,7 +211,9 @@ async def import_records_csv(
     try:
         raw = await csv_file.read()
         text = raw.decode("utf-8-sig")   # utf-8-sig para manejar BOM de Excel
-        reader = csv.DictReader(io.StringIO(text))
+        dialect = "excel" if "," in text.splitlines()[0] and ";" not in text.splitlines()[0] else "excel-tab"
+        delimiter = ";" if ";" in text.splitlines()[0] else ","
+        reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
         rows = list(reader)
     except Exception as e:
         raise HTTPException(422, f"CSV inválido: {e}")
@@ -252,10 +254,17 @@ async def import_records_csv(
         # Bluesky: el uri actúa como external_id
         "uri":                 "url_post",
     }
+    _headers = set(rows[0].keys()) if rows else set()
+    _inferred_platform = (
+        "bluesky" if "uri" in _headers
+        else "reddit" if "id_raiz" in _headers
+        else "youtube" if "id_video" in _headers
+        else None
+    )
     for i, row in enumerate(rows):
         # # 1. Renombrar columnas según el mapa
         row = {CSV_COLUMN_MAP.get(k, k): v for k, v in row.items()}
-
+        
         # 2. Convertir cadenas vacías a None
         cleaned = {k: (v if v != "" else None) for k, v in row.items()}
         # 3. pertinente (bool/string) → pertinencia (string)
@@ -293,7 +302,7 @@ async def import_records_csv(
             project_id=project_id,
             external_id=item.external_id,
             content=item.content,
-            platform=item.platform,
+            platform=item.platform or _inferred_platform,
             tipo=item.tipo,
             fecha=item.fecha,
             fuente=item.fuente,
