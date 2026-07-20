@@ -24,10 +24,40 @@ function parseCsvPreview(text: string): { headers: string[]; rows: string[][] } 
     if (lines.length === 0) return { headers: [], rows: [] };
     const delimiter = lines[0]?.includes(";") && !lines[0]?.includes(",") ? ";" : ",";
     const split = (line: string) => line.split(delimiter).map((c) => c.replace(/^"|"$/g, "").trim());
-    const headers = split(lines[0]);
+    const rawHeaders = split(lines[0]);
+    const headers = rawHeaders.map(h => CSV_COLUMN_MAP[h] ?? h);
     const rows = lines.slice(1, 6).map(split);   // primeras 5 filas
     return { headers, rows };
 }
+
+// AÑADIR después de parseCsvPreview (línea ~29):
+const CSV_COLUMN_MAP: Record<string, string> = {
+    "contenido": "content",
+    "sent_subtopic": "sentiment_llm",
+    "subtopic": "topic_llm",
+    "idioma": "lang",
+    "continente": "world_continent",
+    "pais": "world_country",
+    "region": "world_region",
+    "ciudad": "world_city",
+    "justicia_eq": "justicia_equidad",
+    "confianza": "confianza_institucional",
+    "sent_subtopic_just": "justif_sentimiento",
+    "subtopic_just": "justif_topic",
+    "posicion_just": "justif_posicion",
+    "idioma_just": "justif_lang",
+    "continente_just": "justif_continente",
+    "pais_just": "justif_pais",
+    "region_just": "justif_region",
+    "ciudad_just": "justif_ciudad",
+    "legitimacion_just": "justif_legitimacion",
+    "efectividad_just": "justif_efectividad",
+    "justicia_eq_just": "justif_justicia_equidad",
+    "confianza_just": "justif_confianza_institucional",
+    "titulo_video": "titulo_padre",
+    "canal": "fuente",
+    "uri": "url_post",
+};
 
 // Columnas del CSV que esta plataforma reconoce (para mostrar al usuario qué se detectó)
 const KNOWN_COLS = new Set([

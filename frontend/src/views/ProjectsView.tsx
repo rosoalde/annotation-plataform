@@ -38,7 +38,9 @@ export default function ProjectsView() {
             qc.invalidateQueries({ queryKey: ["projects"] });
             setShowForm(false);
             setForm({ name: "", tema: "", desc_tema: "", population_scope: "" });
-            showToast(`Proyecto "${created.name}" creado ✓`);
+            // Llevar directamente a importar datos — el proyecto vacío no tiene utilidad sin datos
+            // showToast(`Proyecto "${created.name}" creado ✓`);
+            navigate(`/projects/${created.id}/import`);
         },
         onError: (err: any) => showToast(err?.response?.data?.detail ?? "Error al crear el proyecto", false),
     });
@@ -63,7 +65,10 @@ export default function ProjectsView() {
             <div style={S.content}>
                 <div style={{ background: "var(--surface)", borderLeft: "3px solid var(--accent)", borderRadius: "0 var(--r) var(--r) 0", padding: "10px 14px", marginBottom: 18, fontSize: 12, color: "var(--text)", lineHeight: 1.7 }}>
                     Selecciona un proyecto para empezar a anotar. Tu progreso se guarda automáticamente.
-                    {isAdmin && " Una vez dentro de un proyecto, debes usar “⬆ Importar CSV” en el menú lateral para cargar registros."}
+                    {/* {isAdmin && " Una vez dentro de un proyecto, debes usar “⬆ Importar CSV” en el menú lateral para cargar registros."} */
+                        isAdmin && (
+                            <> El flujo es: <strong>1)</strong> crear proyecto → <strong>2)</strong> importar CSV con los datos anotados por el LLM → <strong>3)</strong> los anotadores etiquetan registro a registro.</>
+                        )}
                 </div>
 
                 {showForm && (
@@ -114,6 +119,9 @@ export default function ProjectsView() {
                                 style={{ padding: "7px 16px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, opacity: (!form.name || !form.tema) ? 0.5 : 1 }}>
                                 {createMutation.isPending ? "Creando..." : "Crear proyecto →"}
                             </button>
+                            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, textAlign: "right" as const }}>
+                                Tras crear el proyecto serás redirigido a importar el CSV con los datos.
+                            </div>
                         </div>
                     </div>
                 )}
