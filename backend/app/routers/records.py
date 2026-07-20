@@ -277,7 +277,6 @@ async def import_records_csv(
             val = cleaned.get(geo_field)
             if val and str(val).startswith("["):
                 try:
-                    import json
                     parsed = json.loads(val.replace('""', '"'))
                     if isinstance(parsed, list) and parsed:
                         cleaned[geo_field] = parsed[0] if parsed[0] != "N/A" else None
