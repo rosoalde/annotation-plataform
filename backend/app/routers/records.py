@@ -230,6 +230,7 @@ async def import_records_csv(
         "sent_subtopic":       "sentiment_llm",
         "subtopic":            "topic_llm",
         "idioma":              "lang",
+        "idioma_ia": "lang",
         "continente":          "world_continent",
         "pais":                "world_country",
         "region":              "world_region",

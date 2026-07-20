@@ -104,7 +104,7 @@ class RecordOut(BaseModel):
     cuerpo_padre: Optional[str]
     descripcion_padre: Optional[str]
     tweet_anterior: Optional[str]
-    idioma_ia: Optional[str]
+    # idioma_ia: Optional[str]
     # New: language + world data produced by the LLM re-analysis pass
     lang: Optional[str] = None
     world_continent: Optional[str] = None
@@ -127,7 +127,7 @@ class RecordOut(BaseModel):
     justif_pais: Optional[str] = None
     justif_region: Optional[str] = None
     justif_ciudad: Optional[str] = None
-    codigo_pais: Optional[str] = None
+    # codigo_pais: Optional[str] = None
     sentiment_llm: Optional[int]
     topic_llm: Optional[str]
     legitimacion: Optional[int]
@@ -162,7 +162,7 @@ class RecordImportItem(BaseModel):
     cuerpo_padre: Optional[str] = None
     descripcion_padre: Optional[str] = None
     tweet_anterior: Optional[str] = None
-    idioma_ia: Optional[str] = None
+    # idioma_ia: Optional[str] = None
     model_reasoning: Optional[str] = None
     relevancia_ia:   Optional[str] = None
     # New columns expected from the LLM re-analysis CSV export
@@ -187,7 +187,7 @@ class RecordImportItem(BaseModel):
     justif_pais: Optional[str] = None
     justif_region: Optional[str] = None
     justif_ciudad: Optional[str] = None
-    codigo_pais: Optional[str] = None 
+    # codigo_pais: Optional[str] = None 
     sentiment_llm: Optional[int] = None
     topic_llm: Optional[str] = None
     legitimacion: Optional[int] = None

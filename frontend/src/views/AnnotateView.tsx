@@ -24,18 +24,31 @@ const PILARS = [
 ] as const;
 const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
 
+// Opciones para desplegables — extraídas de los recursos de la plataforma
+const PERTINENCIA_OPTS = ["relevante", "irrelevante"];
+const POSICION_OPTS = [
+    { v: "1", label: "1 — A favor / Pro" },
+    { v: "0", label: "0 — Neutro / Mixto" },
+    { v: "-1", label: "-1 — En contra / Anti" },
+    { v: "2", label: "2 — Sin postura inferible" },
+];
+// Se cargan dinámicamente desde /api/resources/* para no hardcodear 250 países
+// Por ahora ponemos los más frecuentes; el backend puede exponerlos si se desea
+const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
+import COUNTRIES_RAW from "./assets/talkwalker_countries.json";
+import LANGUAGES_RAW from "./assets/talkwalker_languages.json";
+
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.
 const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
     { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
     { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
-    { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
-    { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
+    { key: "idioma", label: "Idioma", justifKey: "justif_lang" },
     { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
     { key: "world_country", label: "País", justifKey: "justif_pais" },
     { key: "world_region", label: "Región", justifKey: "justif_region" },
     { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
-    { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
+    // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
 ];
 
 type FieldState = { value?: string; reason?: string };
@@ -153,6 +166,24 @@ export default function AnnotateView() {
 
     const handleSave = (rec: AnnotRecord) => {
         const ann = getAnn(rec.id);
+
+        const unconfirmed = TEXT_FIELDS.filter(f => {
+            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+            const fa = ann.fields[f.key];
+            return llmVal && fa?.value === undefined;
+        });
+
+        if (unconfirmed.length > 0) {
+            const names = unconfirmed.map(f => f.label).join(", ");
+
+            const ok = window.confirm(
+                `⚠ Los siguientes campos tienen valor del LLM pero no has revisado ni confirmado:\n\n${names}\n\n¿Guardar igualmente?`
+            );
+
+            if (!ok) return;
+        }
+
+
         const sentCorrected = (ann.sentiment ?? rec.sentiment_llm ?? 2) !== rec.sentiment_llm;
         if (sentCorrected && !ann.sentiment_reason) { showToast("Falta el motivo de la corrección de sentimiento", "warn"); return; }
         for (const p of PILARS) {
@@ -332,8 +363,49 @@ export default function AnnotateView() {
                                                 <div key={f.key} style={S.smallCard}>
                                                     <div style={{ fontSize: 10, fontWeight: 600, color: "#28bfb0", marginBottom: 4 }}>{f.label}</div>
                                                     {justif && <div style={S.justifText}>“{justif}”</div>}
-                                                    <input style={{ ...S.input, marginTop: 6 }} value={current}
-                                                        onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
+                                                    {/* Seleccionar tipo de control según el campo */}
+                                                    {f.key === "pertinencia" ? (
+                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+                                                            <option value="">— elige —</option>
+                                                            {PERTINENCIA_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    ) : f.key === "posicion" ? (
+                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+                                                            <option value="">— elige —</option>
+                                                            {POSICION_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                                                        </select>
+                                                    ) : f.key === "world_continent" ? (
+                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+                                                            <option value="">— elige —</option>
+                                                            {CONTINENT_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    ) : f.key === "world_country" ? (
+                                                        <>
+                                                            <input list={`countries-${rec.id}`} style={{ ...S.input, marginTop: 6 }} value={current}
+                                                                onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
+                                                            <datalist id={`countries-${rec.id}`}>
+                                                                {COUNTRIES_RAW.map((c: any) => (
+                                                                    <option key={c.iso2} value={c.iso2}>{c.iso2} — {c.aliases[0]}</option>
+                                                                ))}
+                                                            </datalist>
+                                                        </>
+                                                    ) : f.key === "idioma" ? (
+                                                        <>
+                                                            <input list={`langs-${rec.id}`} style={{ ...S.input, marginTop: 6 }} value={current}
+                                                                onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
+                                                            <datalist id={`langs-${rec.id}`}>
+                                                                {LANGUAGES_RAW.map((l: any) => (
+                                                                    <option key={l.iso1} value={l.iso1}>{l.iso1} — {l.aliases[0]}</option>
+                                                                ))}
+                                                            </datalist>
+                                                        </>
+                                                    ) : (
+                                                        <input style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
+                                                    )}
                                                     <div style={S.iaTag}>IA: {llmVal || "—"}</div>
                                                     {current !== llmVal && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
