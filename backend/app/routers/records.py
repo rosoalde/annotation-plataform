@@ -282,6 +282,29 @@ async def import_records_csv(
                         cleaned[geo_field] = parsed[0] if parsed[0] != "N/A" else None
                 except Exception:
                     pass
+        # 5. Reconstruir url_post a partir de identificadores nativos de cada plataforma
+        raw_url = cleaned.get("url_post") or ""
+        if _inferred_platform == "bluesky" and str(raw_url).startswith("at://"):
+            parts = str(raw_url).split("/")
+            if len(parts) >= 5:
+                did  = parts[2]
+                post = parts[-1]
+                cleaned["url_post"] = f"https://bsky.app/profile/{did}/post/{post}"
+
+        elif _inferred_platform == "reddit" and not raw_url:
+            root = cleaned.get("id_raiz")
+            own  = cleaned.get("id_propio")
+            tipo = str(cleaned.get("tipo") or "").upper()
+            if root:
+                if tipo == "COMENTARIO" and own:
+                    cleaned["url_post"] = f"https://www.reddit.com/comments/{root}/_/{own}"
+                else:
+                    cleaned["url_post"] = f"https://www.reddit.com/comments/{root}"
+
+        elif _inferred_platform == "youtube" and not raw_url:
+            vid = cleaned.get("id_video")
+            if vid:
+                cleaned["url_post"] = f"https://youtu.be/{vid}"       
         try:
             from backend.app.schemas.schemas import RecordImportItem
             item = RecordImportItem(**cleaned)
