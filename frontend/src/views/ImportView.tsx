@@ -74,7 +74,7 @@ function parseCsvPreview(text: string): { headers: string[]; rows: string[][] } 
 const KNOWN_COLS = new Set([
     "external_id", "content", "platform", "tipo", "fecha", "fuente",
     "titulo_padre", "cuerpo_padre", "descripcion_padre", "tweet_anterior",
-    "idioma_ia", "lang", "world_continent", "world_country", "world_region", "world_city",
+    "idioma", "lang", "world_continent", "world_country", "world_region", "world_city",
     "sentiment_llm", "topic_llm", "legitimacion", "efectividad",
     "justicia_equidad", "confianza_institucional",
     "relevancia_ia", "pertinente", "model_reasoning",
@@ -82,7 +82,7 @@ const KNOWN_COLS = new Set([
     "justif_topic", "justif_sentimiento",
     "justif_legitimacion", "justif_efectividad", "justif_justicia_equidad",
     "justif_confianza_institucional", "justif_lang", "justif_continente",
-    "justif_pais", "justif_region", "justif_ciudad", "codigo_pais",
+    "justif_pais", "justif_region", "justif_ciudad", //"codigo_pais",
 ]);
 
 type Step = 1 | 2 | 3;

@@ -159,7 +159,7 @@ Define las 6 tablas de la base de datos como clases Python (ORM SQLAlchemy):
 | `User` | Usuarios con `username`, `email`, `role` y `status` (pending/approved/rejected) |
 | `Project` | Proyectos de anotación con `tema`, `desc_tema`, `population_scope` |
 | `Keyword` | Términos de búsqueda asociados a un proyecto |
-| `Record` | Posts/comentarios a anotar. Tiene ~40 columnas: contenido, contexto del post padre, todos los campos del LLM con sus justificaciones, `url_post`, `lang`, `world_*`, `codigo_pais` |
+| `Record` | Posts/comentarios a anotar. Tiene ~40 columnas: contenido, contexto del post padre, todos los campos del LLM con sus justificaciones, `url_post`, `lang`, `world_*`,|
 | `RecordLock` | Lock pesimista: solo un usuario puede anotar un registro a la vez (TTL 30 min) |
 | `Annotation` | Todas las anotaciones humanas. Campos para sentimiento, pilares, keywords, y campos genéricos (`field_name`/`original_text`/`corrected_text`) para anotar cualquier atributo de texto |
 

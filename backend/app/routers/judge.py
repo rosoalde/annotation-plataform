@@ -60,10 +60,10 @@ async def judge_records(
             platform=rec.platform, tipo=rec.tipo, fecha=rec.fecha,
             fuente=rec.fuente, titulo_padre=rec.titulo_padre,
             cuerpo_padre=rec.cuerpo_padre, descripcion_padre=rec.descripcion_padre,
-            tweet_anterior=rec.tweet_anterior, idioma_ia=rec.idioma_ia,
+            tweet_anterior=rec.tweet_anterior, idioma=rec.idioma,
             lang=rec.lang, world_continent=rec.world_continent,
             world_country=rec.world_country, world_region=rec.world_region,
-            world_city=rec.world_city, codigo_pais=rec.codigo_pais,
+            world_city=rec.world_city, #codigo_pais=rec.codigo_pais,
             url_post=rec.url_post,
             pertinencia=rec.pertinencia, justif_pertinencia=rec.justif_pertinencia,
             posicion=rec.posicion, justif_posicion=rec.justif_posicion,
@@ -231,7 +231,7 @@ async def export_judged(
             "world_country":          rec.world_country,
             "world_region":           rec.world_region,
             "world_city":             rec.world_city,
-            "codigo_pais":            rec.codigo_pais,
+            # "codigo_pais":            rec.codigo_pais,
             "url_post":               rec.url_post,
             "status":                 rec.status,
             # Valores LLM originales
@@ -243,7 +243,7 @@ async def export_judged(
             "efectividad_llm":        rec.efectividad,
             "justicia_equidad_llm":   rec.justicia_equidad,
             "confianza_inst_llm":     rec.confianza_institucional,
-            "idioma_ia_llm":              rec.idioma_ia,
+            "idioma_llm":              rec.idioma,
             "justif_sentimiento":         rec.justif_sentimiento,
             "justif_topic":               rec.justif_topic,
             "justif_pertinencia":         rec.justif_pertinencia,
@@ -313,20 +313,20 @@ async def export_judged(
 
             # ── Text fields ────────────────────────────────────────────────
             TEXT_FIELD_KEYS = [
-                "pertinencia", "posicion", "idioma_ia", "lang",
+                "pertinencia", "posicion", "idioma", "lang",
                 "world_continent", "world_country", "world_region",
-                "world_city", "codigo_pais",
+                "world_city", #"codigo_pais",
             ]
             llm_field_map = {
                 "pertinencia":     rec.pertinencia,
                 "posicion":        rec.posicion,
-                "idioma_ia":       rec.idioma_ia,
+                "idioma":       rec.idioma,
                 "lang":            rec.lang,
                 "world_continent": rec.world_continent,
                 "world_country":   rec.world_country,
                 "world_region":    rec.world_region,
                 "world_city":      rec.world_city,
-                "codigo_pais":     rec.codigo_pais,
+                #"codigo_pais":     rec.codigo_pais,
             }
             field_final   = {}
             field_reasons = {}
@@ -392,7 +392,7 @@ async def export_judged(
                 "world_country_final":    field_final["world_country"],
                 "world_region_final":     field_final["world_region"],
                 "world_city_final":       field_final["world_city"],
-                "codigo_pais_final":      field_final["codigo_pais"],
+                #"codigo_pais_final":      field_final["codigo_pais"],
                 "legitimacion_final":     pilar_final["legitimacion"],
                 "efectividad_final":      pilar_final["efectividad"],
                 "justicia_equidad_final": pilar_final["justicia_equidad"],

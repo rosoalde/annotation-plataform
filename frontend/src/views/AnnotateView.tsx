@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { recordsApi, annotationsApi, LockConflictError } from "../services/api";
 import type { Record as AnnotRecord } from "../types";
 import ProjectContextBar from "../components/ProjectContextBar";
+import COUNTRIES_RAW from "../assets/talkwalker_countries.json";
+import LANGUAGES_RAW from "../assets/talkwalker_languages.json";
 
 const SENT_OPTS = [
     { v: 1, icon: "↑", label: "Positivo", color: "#2ec27e" },
@@ -35,8 +37,7 @@ const POSICION_OPTS = [
 // Se cargan dinámicamente desde /api/resources/* para no hardcodear 250 países
 // Por ahora ponemos los más frecuentes; el backend puede exponerlos si se desea
 const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
-import COUNTRIES_RAW from "./assets/talkwalker_countries.json";
-import LANGUAGES_RAW from "./assets/talkwalker_languages.json";
+
 
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.

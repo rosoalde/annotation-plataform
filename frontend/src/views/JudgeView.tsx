@@ -87,13 +87,13 @@ export default function JudgeView() {
     const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
         { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
         { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
-        { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
-        { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
+        // { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
+        // { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
         { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
         { key: "world_country", label: "País", justifKey: "justif_pais" },
         { key: "world_region", label: "Región", justifKey: "justif_region" },
         { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
-        { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
+        // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
     ];
 
     const [exporting, setExporting] = useState(false);

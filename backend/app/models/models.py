@@ -107,7 +107,7 @@ class Record(Base):
     cuerpo_padre            = Column(Text, nullable=True)
     descripcion_padre       = Column(Text, nullable=True)
     tweet_anterior          = Column(Text, nullable=True)
-    idioma_ia               = Column(String(50), nullable=True)   # legacy field, kept for compatibility
+    idioma               = Column(String(50), nullable=True)   # legacy field, kept for compatibility
     relevancia_ia    = Column(String(5),   nullable=True)   # "SI" / "NO" del filtro LLM
     model_reasoning  = Column(Text,        nullable=True)   # cadena de razonamiento del LLM
     # ── New: language + geolocation produced by the LLM pass ──────────────
@@ -149,7 +149,7 @@ class Record(Base):
     justif_pais        = Column(Text, nullable=True)
     justif_region      = Column(Text, nullable=True)
     justif_ciudad      = Column(Text, nullable=True)
-    codigo_pais        = Column(String(2), nullable=True)    # ISO 3166-1 alpha-2
+    # codigo_pais        = Column(String(2), nullable=True)    # ISO 3166-1 alpha-2
 
 
 
