@@ -113,6 +113,47 @@ export default function JudgeView() {
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
+    const handleSaveAll = async (record: typeof data[0]["record"]) => {
+        // Guardar todos los campos que tienen draft en judgeFields para este record
+        const saves: Promise<any>[] = [];
+
+        // Sentimiento
+        const sentKey = `${record.id}__sentiment`;
+        if (judgeFields[sentKey] !== undefined) {
+            const sentAnnsForRec = (data?.find(d => d.record.id === record.id)?.annotations ?? [])
+                .filter(a => a.annotation_type === "sentiment");
+            const existing = sentAnnsForRec[0];
+            const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
+            if (existing)
+                saves.push(judgeFieldMutation.mutateAsync({ annotationId: existing.id, finalValue: judgeFields[sentKey] as number, reason }));
+            else
+                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason }));
+        }
+
+        // Campos de texto (TEXT_FIELDS)
+        for (const { key: fieldKey } of TEXT_FIELDS) {
+            const jKey = `${record.id}__field__${fieldKey}`;
+            const draft = judgeFields[jKey] as string | undefined;
+            if (draft !== undefined) {
+                const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                const fieldAnnsForRec = (data?.find(d => d.record.id === record.id)?.annotations ?? [])
+                    .filter(a => a.annotation_type === "field" && a.field_name === fieldKey);
+                const existing = fieldAnnsForRec[0];
+                if (existing)
+                    saves.push(judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason }));
+                else
+                    saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }));
+            }
+        }
+
+        await Promise.all(saves);
+        showToast("Todo guardado ✓");
+        // Scroll al siguiente record
+        const idx = (data ?? []).findIndex(d => d.record.id === record.id);
+        if (idx !== -1 && idx < (data?.length ?? 0) - 1) {
+            document.getElementById(`judge-rec-${(data ?? [])[idx + 1].record.id}`)?.scrollIntoView({ behavior: "smooth" });
+        }
+    };
     const handleExport = async (format: "jsonl" | "csv", mode: "judge" | "annotators" | "all") => {
         if (!projectId) return;
         setExporting(true);
@@ -285,7 +326,7 @@ export default function JudgeView() {
                     }
 
                     return (
-                        <div key={record.id} style={S.recCard}>
+                        <div key={record.id} id={`judge-rec-${record.id}`} style={S.recCard}>
                             {/* ── Cabecera del record ── */}
                             <div style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "var(--muted)", marginBottom: 4 }}>
                                 [{record.platform ?? "?"} · {record.tipo ?? "?"} · {record.fecha ?? "?"}]
@@ -698,6 +739,14 @@ export default function JudgeView() {
                                         </div>
                                     );
                                 })}
+                            </div>
+                            {/* Botón Guardar todo y siguiente */}
+                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                                <button
+                                    onClick={() => handleSaveAll(record)}
+                                    style={{ padding: "7px 16px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                                    Guardar todo y siguiente →
+                                </button>
                             </div>
                         </div>
                     );
