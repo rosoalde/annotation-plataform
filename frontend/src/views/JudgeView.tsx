@@ -641,9 +641,9 @@ export default function JudgeView() {
                                             <span style={{ fontSize: 10, color: "var(--muted)" }}>LLM: <strong style={{ color: "var(--text)" }}>{llmVal || "—"}</strong>
                                                 {llmVal && <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "0 0 0 4px" }}
                                                     onClick={() => {
-                                                        setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }));
-                                                        setAdoptedFrom(p => ({ ...p, [jKey]: `👤 ${a.annotator}` }));
-                                                    }}>← adoptar</button>}
+                                                        setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: "" }));
+                                                        setAdoptedFrom(p => ({ ...p, [jKey]: "🤖 LLM" }));
+                                                    }}>← adoptar LLM</button>}
                                             </span>
                                             {fieldVals.length === 0 && (
                                                 <span style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Ningún anotador lo corrigió</span>
