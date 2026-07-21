@@ -449,7 +449,7 @@ export default function JudgeView() {
                                                     👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_text ?? "—"}</strong>
                                                     {a.correction_reason && <em style={{ fontSize: 9 }}> ({a.correction_reason})</em>}
                                                     <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>← adoptar</button>
+                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>← adoptar</button>
                                                 </div>
                                             ))}
                                             <input style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "3px 7px", fontSize: 10, width: 120 }}
@@ -697,7 +697,7 @@ export default function JudgeView() {
                                                     {a.correction_reason && <em style={{ fontSize: 9 }}> ({a.correction_reason})</em>}
                                                     <button
                                                         style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
                                                         ← adoptar
                                                     </button>
                                                 </div>
