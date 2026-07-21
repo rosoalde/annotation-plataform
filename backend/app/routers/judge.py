@@ -50,7 +50,8 @@ async def judge_records(
                 corrected_topic=a.corrected_topic, corrected_value=a.corrected_value,
                 pilar=a.pilar, field_name=a.field_name, corrected_text=a.corrected_text,
                 is_correction=a.is_correction, judge_final_value=a.judge_final_value,
-                judge_final_text=a.judge_final_text, reviewer_decision=a.reviewer_decision,
+                judge_final_text=a.judge_final_text, judge_reason=a.judge_reason,
+                reviewer_decision=a.reviewer_decision,
             )
             for a in anns
         ]
@@ -101,7 +102,7 @@ async def judge_decide(
     if body.final_text is not None:
         ann.judge_final_text = body.final_text
     if body.reason is not None:
-        ann.correction_reason = body.reason    
+        ann.judge_reason = body.reason
     await db.flush()   # persiste el valor actual antes de contar 
 
     # Solo marca como "judged" cuando TODAS las correcciones del registro
@@ -135,7 +136,7 @@ async def judge_decide_new(
         record_id=body.record_id, project_id=body.project_id,
         annotator_id=current_user.id, annotation_type=body.annotation_type,
         pilar=body.pilar, field_name=body.field_name,
-        is_correction=False, correction_reason=body.reason,
+        is_correction=False, judge_reason=body.reason,
         judge_final_value=body.final_value, judge_final_text=body.final_text,
     )
     db.add(ann)
@@ -278,14 +279,14 @@ async def export_judged(
                 (a for a in sent_anns if a.judge_final_value is not None), None
             )
             sent_final       = judge_sent_ann.judge_final_value if judge_sent_ann else rec.sentiment_llm
-            sent_judge_reason = judge_sent_ann.correction_reason if judge_sent_ann else None
+            sent_judge_reason = judge_sent_ann.judge_reason if judge_sent_ann else None
 
             # ── Topic (stored as field annotation with field_name="topic") ─
             judge_topic_ann = next(
                 (a for a in field_anns if a.field_name == "topic" and a.judge_final_text is not None), None
             )
             topic_final       = judge_topic_ann.judge_final_text if judge_topic_ann else rec.topic_llm
-            topic_judge_reason = judge_topic_ann.correction_reason if judge_topic_ann else None
+            topic_judge_reason = judge_topic_ann.judge_reason if judge_topic_ann else None
 
             # ── Pilars ────────────────────────────────────────────────────
             PILAR_KEYS = [
@@ -306,7 +307,7 @@ async def export_judged(
                 )
                 if judge_a:
                     pilar_final[key]   = judge_a.judge_final_value
-                    pilar_reasons[key] = judge_a.correction_reason
+                    pilar_reasons[key] = judge_a.judge_reason
                 else:
                     pilar_final[key]   = pilar_llm_map[key]   # LLM fallback
                     pilar_reasons[key] = None
@@ -336,7 +337,7 @@ async def export_judged(
                 )
                 if judge_a:
                     field_final[key]   = judge_a.judge_final_text
-                    field_reasons[key] = judge_a.correction_reason
+                    field_reasons[key] = judge_a.judge_reason
                 else:
                     field_final[key]   = llm_field_map[key]   # LLM fallback
                     field_reasons[key] = None
@@ -402,7 +403,10 @@ async def export_judged(
                 "judge_pertinencia_reason":      field_reasons["pertinencia"],
                 "judge_posicion_reason":         field_reasons["posicion"],
                 "judge_lang_reason":             field_reasons["lang"],
+                "judge_world_continent_reason":  field_reasons["world_continent"],
                 "judge_world_country_reason":    field_reasons["world_country"],
+                "judge_world_region_reason":     field_reasons["world_region"],
+                "judge_world_city_reason":       field_reasons["world_city"],
                 "judge_legitimacion_reason":     pilar_reasons["legitimacion"],
                 "judge_efectividad_reason":      pilar_reasons["efectividad"],
                 "judge_justicia_equidad_reason": pilar_reasons["justicia_equidad"],

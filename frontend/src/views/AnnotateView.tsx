@@ -82,8 +82,17 @@ export default function AnnotateView() {
     const [toast, setToast] = useState<{ msg: string; type?: "ok" | "warn" } | null>(null);
 
     const [confirmedFields, setConfirmedFields] = useState<Record<string, Set<string>>>({});
-    const confirmField = (recId: string, key: string) =>
+    const confirmField = (recId: string, key: string) => {
         setConfirmedFields(prev => ({ ...prev, [recId]: new Set([...(prev[recId] ?? []), key]) }));
+        // Antes esto era solo un flag visual y no generaba ninguna anotación,
+        // así que el juez no tenía nada que adoptar de este anotador cuando
+        // solo confirmaba el valor del LLM sin editarlo. Ahora se guarda el
+        // valor confirmado (igual al del LLM, sin motivo, sin marcar como
+        // corrección) para que quede visible en la vista del juez.
+        const rec = (data?.records ?? []).find(r => r.id === recId);
+        const llmVal = rec ? ((rec as any)[key] as string | undefined) ?? "" : "";
+        setField(recId, key, { value: llmVal });
+    };
 
     const showToast = useCallback((msg: string, type: "ok" | "warn" = "ok") => {
         setToast({ msg, type });

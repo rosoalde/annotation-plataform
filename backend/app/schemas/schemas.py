@@ -306,6 +306,7 @@ class JudgeAnnotationOut(BaseModel):
     is_correction: bool
     judge_final_value: Optional[int]
     judge_final_text: Optional[str] = None
+    judge_reason: Optional[str] = None
     reviewer_decision: Optional[str] = None
 
 class JudgeRecordOut(BaseModel):

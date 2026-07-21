@@ -212,10 +212,11 @@ class Annotation(Base):
 
     # Common
     is_correction     = Column(Boolean, default=False)
-    correction_reason = Column(Text, nullable=True)
+    correction_reason = Column(Text, nullable=True)   # motivo del ANOTADOR
     reviewer_decision = Column(String(20), nullable=True)  # accept | reject
     judge_final_value = Column(Integer, nullable=True)
     judge_final_text  = Column(Text, nullable=True)  # decisión del juez cuando el campo es de texto
+    judge_reason      = Column(Text, nullable=True)  # motivo del JUEZ (separado del del anotador)
 
     version    = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)

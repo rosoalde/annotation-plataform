@@ -110,19 +110,22 @@ export default function JudgeView() {
         { key: "world_region", label: "Región", justifKey: "justif_region" },
         { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
     ];
+
+    // Mismo conjunto que AnnotateView.tsx — usado por handleSaveAll para no
+    // dejar afuera ningún campo de texto al guardar todo de una vez.
+    const TEXT_FIELDS = [...PERTINENCIA_POSICION_FIELDS, ...GEO_FIELDS];
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
     const handleSaveAll = async (record: typeof data[0]["record"]) => {
         // Guardar todos los campos que tienen draft en judgeFields para este record
         const saves: Promise<any>[] = [];
+        const recAnns = data?.find(d => d.record.id === record.id)?.annotations ?? [];
 
         // Sentimiento
         const sentKey = `${record.id}__sentiment`;
         if (judgeFields[sentKey] !== undefined) {
-            const sentAnnsForRec = (data?.find(d => d.record.id === record.id)?.annotations ?? [])
-                .filter(a => a.annotation_type === "sentiment");
-            const existing = sentAnnsForRec[0];
+            const existing = recAnns.filter(a => a.annotation_type === "sentiment")[0];
             const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
             if (existing)
                 saves.push(judgeFieldMutation.mutateAsync({ annotationId: existing.id, finalValue: judgeFields[sentKey] as number, reason }));
@@ -130,20 +133,49 @@ export default function JudgeView() {
                 saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason }));
         }
 
-        // Campos de texto (TEXT_FIELDS)
+        // Topic
+        const topicKey = `${record.id}__topic`;
+        const topicDraft = judgeFields[topicKey] as string | undefined;
+        if (topicDraft) {
+            const existing = recAnns.filter(a => a.annotation_type === "field" && a.field_name === "topic")[0];
+            const reason = (judgeFields[`${topicKey}__reason`] as string) || undefined;
+            if (existing)
+                saves.push(judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: topicDraft, reason }));
+            else
+                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason }));
+        }
+
+        // Campos de texto: pertinencia, posición, idioma y geolocalización
         for (const { key: fieldKey } of TEXT_FIELDS) {
             const jKey = `${record.id}__field__${fieldKey}`;
             const draft = judgeFields[jKey] as string | undefined;
-            if (draft !== undefined) {
+            if (draft) {
                 const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                const fieldAnnsForRec = (data?.find(d => d.record.id === record.id)?.annotations ?? [])
-                    .filter(a => a.annotation_type === "field" && a.field_name === fieldKey);
-                const existing = fieldAnnsForRec[0];
+                const existing = recAnns.filter(a => a.annotation_type === "field" && a.field_name === fieldKey)[0];
                 if (existing)
                     saves.push(judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason }));
                 else
                     saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }));
             }
+        }
+
+        // Pilares
+        for (const pilarKey of Object.keys(PILAR_LABELS)) {
+            const jKey = `${record.id}__${pilarKey}`;
+            const sel = judgeFields[jKey] as number | undefined;
+            if (sel !== undefined) {
+                const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                const existing = recAnns.filter(a => a.annotation_type === "pilar" && a.pilar === pilarKey)[0];
+                if (existing)
+                    saves.push(judgeFieldMutation.mutateAsync({ annotationId: existing.id, finalValue: sel, reason }));
+                else
+                    saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel, reason }));
+            }
+        }
+
+        if (saves.length === 0) {
+            showToast("No hay cambios sin guardar en este registro", false);
+            return;
         }
 
         await Promise.all(saves);
@@ -594,8 +626,8 @@ export default function JudgeView() {
                                                                 <button
                                                                     style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}
                                                                     onClick={() => {
-                                                                        setJudgeFields(p => ({ ...p, [jKey]: a.corrected_value, [`${jKey}__reason`]: a.correction_reason ?? "" }));
-                                                                        setAdoptedFrom(p => ({ ...p, [jKey]: `👤 ${a.annotator}` }));
+                                                                        setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: justif ?? "" }));
+                                                                        setAdoptedFrom(p => ({ ...p, [jKey]: "🤖 LLM" }));
                                                                     }}>
                                                                     ← adoptar
                                                                 </button>
@@ -684,7 +716,7 @@ export default function JudgeView() {
                                             <span style={{ fontSize: 10, color: "var(--muted)" }}>LLM: <strong style={{ color: "var(--text)" }}>{llmVal || "—"}</strong>
                                                 {llmVal && <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "0 0 0 4px" }}
                                                     onClick={() => {
-                                                        setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: "" }));
+                                                        setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: llmJustif ?? "" }));
                                                         setAdoptedFrom(p => ({ ...p, [jKey]: "🤖 LLM" }));
                                                     }}>← adoptar LLM</button>}
                                             </span>
