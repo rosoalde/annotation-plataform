@@ -41,9 +41,12 @@ const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
 
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.
-const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
-    { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
-    { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
+const PERTINENCIA_POSICION_FIELDS: Array<{ key: string; label: string; justifKey: string | null; color: string }> = [
+    { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia", color: "#e8962a" },
+    { key: "posicion", label: "Posición", justifKey: "justif_posicion", color: "#7a9bf5" },
+];
+
+const GEO_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
     { key: "lang", label: "Idioma", justifKey: "justif_lang" },
     { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
     { key: "world_country", label: "País", justifKey: "justif_pais" },
@@ -51,6 +54,8 @@ const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null 
     { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
     // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
 ];
+
+const TEXT_FIELDS = [...PERTINENCIA_POSICION_FIELDS, ...GEO_FIELDS];
 
 type FieldState = { value?: string; reason?: string };
 type RecordAnn = {
@@ -296,7 +301,41 @@ export default function AnnotateView() {
 
                             {unlocked && (
                                 <>
-                                    {/* Tema / topic */}
+                                    {/* ── 1. PERTINENCIA Y POSICIÓN ─────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 12 }}>Pertinencia y posición</div>
+                                    <div style={S.fieldGrid}>
+                                        {PERTINENCIA_POSICION_FIELDS.map((f) => {
+                                            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+                                            const fa = ann.fields[f.key] ?? {};
+                                            const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
+                                            const current = fa.value ?? llmVal;
+                                            return (
+                                                <div key={f.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: f.color, marginBottom: 4 }}>{f.label}</div>
+                                                    <div style={S.iaTag}>IA: {llmVal || "—"}</div>
+                                                    {justif && <div style={S.justifText}>"{justif}"</div>}
+                                                    {f.key === "pertinencia" ? (
+                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+                                                            <option value="">— elige —</option>
+                                                            {PERTINENCIA_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                                                        </select>
+                                                    ) : (
+                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
+                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+                                                            <option value="">— elige —</option>
+                                                            {POSICION_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                                                        </select>
+                                                    )}
+                                                    {current !== llmVal && (
+                                                        <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* ── 2. TEMA / TOPIC ───────────────────────────────────────── */}
                                     <FieldGroup title="Tema / topic" llmValue={rec.topic_llm} justif={rec.justif_topic}>
                                         <input style={S.input}
                                             value={ann.topic ?? rec.topic_llm ?? ""}
@@ -306,8 +345,8 @@ export default function AnnotateView() {
                                         )}
                                     </FieldGroup>
 
-                                    {/* Sentimiento */}
-                                    <FieldGroup title="Sentimiento" llmValue={sentLabel(rec.sentiment_llm)} justif={rec.justif_sentimiento}>
+                                    {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
+                                    <FieldGroup title="Sentimiento (topic)" llmValue={sentLabel(rec.sentiment_llm)} justif={rec.justif_sentimiento}>
                                         <div style={S.sentBtns}>
                                             {SENT_OPTS.map((opt) => (
                                                 <button key={opt.v}
@@ -322,12 +361,40 @@ export default function AnnotateView() {
                                         )}
                                     </FieldGroup>
 
-
-
-                                    {/* Pertinencia, posición, idioma, geolocalización, código país */}
-                                    <div style={S.sectionLabel}>Pertinencia, posición, idioma y geolocalización</div>
+                                    {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
+                                    <div style={S.sectionLabel}>Pilares de aceptación</div>
                                     <div style={S.fieldGrid}>
-                                        {TEXT_FIELDS.map((f) => {
+                                        {PILARS.map((p) => {
+                                            const llmVal = (rec as any)[p.key] as number | undefined;
+                                            const pa = ann.pilars[p.key] ?? {};
+                                            const sel = pa.value !== undefined ? pa.value : llmVal;
+                                            const justif = (rec as any)[p.justifKey] as string | undefined;
+                                            return (
+                                                <div key={p.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4 }}>{p.label}</div>
+                                                    <div style={S.iaTag}>IA: {pilarLabel(llmVal)}</div>
+                                                    {justif && <div style={S.justifText}>"{justif}"</div>}
+                                                    <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                                                        {[{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }].map((btn) => (
+                                                            <button key={btn.v}
+                                                                style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
+                                                                onClick={() => setPilar(rec.id, p.key, { value: btn.v })}>
+                                                                {btn.l}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {sel !== llmVal && (
+                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* ── 5. IDIOMA Y GEOLOCALIZACIÓN ───────────────────────────── */}
+                                    <div style={S.sectionLabel}>Idioma y geolocalización</div>
+                                    <div style={S.fieldGrid}>
+                                        {GEO_FIELDS.map((f) => {
                                             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
                                             const fa = ann.fields[f.key] ?? {};
                                             const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
@@ -335,21 +402,9 @@ export default function AnnotateView() {
                                             return (
                                                 <div key={f.key} style={S.smallCard}>
                                                     <div style={{ fontSize: 10, fontWeight: 600, color: "#28bfb0", marginBottom: 4 }}>{f.label}</div>
-                                                    {justif && <div style={S.justifText}>“{justif}”</div>}
-                                                    {/* Seleccionar tipo de control según el campo */}
-                                                    {f.key === "pertinencia" ? (
-                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
-                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
-                                                            <option value="">— elige —</option>
-                                                            {PERTINENCIA_OPTS.map(o => <option key={o} value={o}>{o}</option>)}
-                                                        </select>
-                                                    ) : f.key === "posicion" ? (
-                                                        <select style={{ ...S.input, marginTop: 6 }} value={current}
-                                                            onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
-                                                            <option value="">— elige —</option>
-                                                            {POSICION_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
-                                                        </select>
-                                                    ) : f.key === "world_continent" ? (
+                                                    <div style={S.iaTag}>IA: {llmVal || "—"}</div>
+                                                    {justif && <div style={S.justifText}>"{justif}"</div>}
+                                                    {f.key === "world_continent" ? (
                                                         <select style={{ ...S.input, marginTop: 6 }} value={current}
                                                             onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
                                                             <option value="">— elige —</option>
@@ -379,7 +434,6 @@ export default function AnnotateView() {
                                                         <input style={{ ...S.input, marginTop: 6 }} value={current}
                                                             onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
                                                     )}
-                                                    <div style={S.iaTag}>IA: {llmVal || "—"}</div>
                                                     {current !== llmVal && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                     )}
@@ -388,37 +442,6 @@ export default function AnnotateView() {
                                         })}
                                     </div>
 
-
-
-                                    {/* Pilares */}
-                                    <div style={S.sectionLabel}>Pilares de aceptación</div>
-                                    <div style={S.fieldGrid}>
-                                        {PILARS.map((p) => {
-                                            const llmVal = (rec as any)[p.key] as number | undefined;
-                                            const pa = ann.pilars[p.key] ?? {};
-                                            const sel = pa.value !== undefined ? pa.value : llmVal;
-                                            const justif = (rec as any)[p.justifKey] as string | undefined;
-                                            return (
-                                                <div key={p.key} style={S.smallCard}>
-                                                    <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4 }}>{p.label}</div>
-                                                    {justif && <div style={S.justifText}>“{justif}”</div>}
-                                                    <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                                                        {[{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }].map((btn) => (
-                                                            <button key={btn.v}
-                                                                style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
-                                                                onClick={() => setPilar(rec.id, p.key, { value: btn.v })}>
-                                                                {btn.l}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    <div style={S.iaTag}>IA: {pilarLabel(llmVal)}</div>
-                                                    {sel !== llmVal && (
-                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
                                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
                                         <button style={S.saveBtn} onClick={() => handleSave(rec)} disabled={saving[rec.id]}>
                                             {saving[rec.id] ? "Guardando..." : "Guardar y siguiente →"}
@@ -461,7 +484,7 @@ function FieldGroup({ title, llmValue, justif, children }: { title: string; llmV
 function ReasonBox({ value, onChange, compact }: { value?: string; onChange: (v: string) => void; compact?: boolean }) {
     return (
         <textarea style={{ ...S.textarea, marginTop: 6 }} rows={compact ? 1 : 2}
-            placeholder="Motivo de la corrección..."
+            placeholder="Justificación de tu asignación..."
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)} />
     );
