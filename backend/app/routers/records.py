@@ -242,6 +242,7 @@ async def import_records_csv(
         "idioma_just":         "justif_lang",
         "continente_just":     "justif_continente",
         "pais_just":           "justif_pais",
+        "pertinente_just":     "justif_pertinencia",
         "region_just":         "justif_region",
         "ciudad_just":         "justif_ciudad",
         "legitimacion_just":   "justif_legitimacion",
