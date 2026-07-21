@@ -81,6 +81,10 @@ export default function AnnotateView() {
     const [saving, setSaving] = useState<Record<string, boolean>>({});
     const [toast, setToast] = useState<{ msg: string; type?: "ok" | "warn" } | null>(null);
 
+    const [confirmedFields, setConfirmedFields] = useState<Record<string, Set<string>>>({});
+    const confirmField = (recId: string, key: string) =>
+        setConfirmedFields(prev => ({ ...prev, [recId]: new Set([...(prev[recId] ?? []), key]) }));
+
     const showToast = useCallback((msg: string, type: "ok" | "warn" = "ok") => {
         setToast({ msg, type });
         setTimeout(() => setToast(null), 2600);
@@ -147,6 +151,7 @@ export default function AnnotateView() {
         onSuccess: (_, { rec }) => {
             setSaving((prev) => { const n = { ...prev }; delete n[rec.id]; return n; });
             setAnnotations((prev) => { const n = { ...prev }; delete n[rec.id]; return n; });
+            setConfirmedFields((prev) => { const n = { ...prev }; delete n[rec.id]; return n; });
             qc.invalidateQueries({ queryKey: ["records", projectId, "annotate"] });
             showToast("Guardado ✓");
         },
@@ -173,10 +178,12 @@ export default function AnnotateView() {
     const handleSave = (rec: AnnotRecord) => {
         const ann = getAnn(rec.id);
 
+        const confirmed = confirmedFields[rec.id] ?? new Set<string>();
         const unconfirmed = TEXT_FIELDS.filter(f => {
             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+            if (!llmVal) return false;
             const fa = ann.fields[f.key];
-            return llmVal && fa?.value === undefined;
+            return fa?.value === undefined && !confirmed.has(f.key);
         });
 
         if (unconfirmed.length > 0) {
@@ -327,6 +334,13 @@ export default function AnnotateView() {
                                                             {POSICION_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
                                                         </select>
                                                     )}
+                                                    {llmVal && fa.value === undefined && !confirmedFields[rec.id]?.has(f.key) && (
+                                                        <button style={{ fontSize: 10, color: "#6b7080", background: "transparent", border: "1px solid #252830", borderRadius: 5, padding: "3px 7px", marginTop: 5, cursor: "pointer", display: "block" }}
+                                                            onClick={() => confirmField(rec.id, f.key)}>✓ Confirmar valor IA</button>
+                                                    )}
+                                                    {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
+                                                        <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
+                                                    )}
                                                     {current !== llmVal && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                     )}
@@ -433,6 +447,13 @@ export default function AnnotateView() {
                                                     ) : (
                                                         <input style={{ ...S.input, marginTop: 6 }} value={current}
                                                             onChange={(e) => setField(rec.id, f.key, { value: e.target.value })} />
+                                                    )}
+                                                    {llmVal && fa.value === undefined && !confirmedFields[rec.id]?.has(f.key) && (
+                                                        <button style={{ fontSize: 10, color: "#6b7080", background: "transparent", border: "1px solid #252830", borderRadius: 5, padding: "3px 7px", marginTop: 5, cursor: "pointer", display: "block" }}
+                                                            onClick={() => confirmField(rec.id, f.key)}>✓ Confirmar valor IA</button>
+                                                    )}
+                                                    {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
+                                                        <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
                                                     )}
                                                     {current !== llmVal && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
