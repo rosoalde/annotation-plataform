@@ -128,8 +128,10 @@ export default function JudgeView() {
             a.click();
             URL.revokeObjectURL(url);
             showToast(`Descargado: ${result.count} registros (${mode})`);
-        } catch {
-            showToast("Error al exportar", false);
+        } catch (err: any) {
+            const msg = err?.response?.data?.detail ?? err?.message ?? "Error al exportar";
+            showToast(`Error al exportar: ${msg}`, false);
+            console.error("Export error:", err?.response ?? err);
         } finally {
             setExporting(false);
         }

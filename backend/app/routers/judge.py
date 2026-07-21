@@ -313,7 +313,7 @@ async def export_judged(
 
             # ── Text fields ────────────────────────────────────────────────
             TEXT_FIELD_KEYS = [
-                "pertinencia", "posicion", "idioma", "lang",
+                "pertinencia", "posicion", "lang",
                 "world_continent", "world_country", "world_region",
                 "world_city", #"codigo_pais",
             ]
