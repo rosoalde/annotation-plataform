@@ -322,35 +322,7 @@ export default function AnnotateView() {
                                         )}
                                     </FieldGroup>
 
-                                    {/* Pilares */}
-                                    <div style={S.sectionLabel}>Pilares de aceptación</div>
-                                    <div style={S.fieldGrid}>
-                                        {PILARS.map((p) => {
-                                            const llmVal = (rec as any)[p.key] as number | undefined;
-                                            const pa = ann.pilars[p.key] ?? {};
-                                            const sel = pa.value !== undefined ? pa.value : llmVal;
-                                            const justif = (rec as any)[p.justifKey] as string | undefined;
-                                            return (
-                                                <div key={p.key} style={S.smallCard}>
-                                                    <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4 }}>{p.label}</div>
-                                                    {justif && <div style={S.justifText}>“{justif}”</div>}
-                                                    <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                                                        {[{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }].map((btn) => (
-                                                            <button key={btn.v}
-                                                                style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
-                                                                onClick={() => setPilar(rec.id, p.key, { value: btn.v })}>
-                                                                {btn.l}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    <div style={S.iaTag}>IA: {pilarLabel(llmVal)}</div>
-                                                    {sel !== llmVal && (
-                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+
 
                                     {/* Pertinencia, posición, idioma, geolocalización, código país */}
                                     <div style={S.sectionLabel}>Pertinencia, posición, idioma y geolocalización</div>
@@ -416,6 +388,37 @@ export default function AnnotateView() {
                                         })}
                                     </div>
 
+
+
+                                    {/* Pilares */}
+                                    <div style={S.sectionLabel}>Pilares de aceptación</div>
+                                    <div style={S.fieldGrid}>
+                                        {PILARS.map((p) => {
+                                            const llmVal = (rec as any)[p.key] as number | undefined;
+                                            const pa = ann.pilars[p.key] ?? {};
+                                            const sel = pa.value !== undefined ? pa.value : llmVal;
+                                            const justif = (rec as any)[p.justifKey] as string | undefined;
+                                            return (
+                                                <div key={p.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4 }}>{p.label}</div>
+                                                    {justif && <div style={S.justifText}>“{justif}”</div>}
+                                                    <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                                                        {[{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }].map((btn) => (
+                                                            <button key={btn.v}
+                                                                style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
+                                                                onClick={() => setPilar(rec.id, p.key, { value: btn.v })}>
+                                                                {btn.l}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <div style={S.iaTag}>IA: {pilarLabel(llmVal)}</div>
+                                                    {sel !== llmVal && (
+                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
                                         <button style={S.saveBtn} onClick={() => handleSave(rec)} disabled={saving[rec.id]}>
                                             {saving[rec.id] ? "Guardando..." : "Guardar y siguiente →"}

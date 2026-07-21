@@ -56,7 +56,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "pertinente_just": {
                     "type": "string",
-                    "description": "Justificación breve (≤150 chars) de por qué ese contenido es pertinente.",
+                    "description": "Justificación breve (≤150 chars) de por qué el contenido se considera pertinente o no pertinente. Nunca dejar vacío.",
                 },
 
                 # ── Subtopic ──────────────────────────────────────────────────
@@ -71,7 +71,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "subtopic_just": {
                     "type": "string",
-                    "description": "Justificación breve (≤150 chars) de por qué ese subtopic.",
+                    "description": "Justificación breve (≤150 chars) del subtopic identificado. Nunca dejar vacío.",
                 },
 
                 # ── Sentimiento hacia el subtopic ─────────────────────────────────
@@ -87,7 +87,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "sent_subtopic_just": {
                     "type": "string",
-                    "description": "Justificación breve (≤150 chars) del sentimiento detectado.",
+                    "description": "Justificación breve (≤150 chars) del sentimiento detectado. Nunca dejar vacío.",
                 },
 
                 # ── Postura / Stance ───────────────────────────────────────────
@@ -109,9 +109,10 @@ ANALYZE_POST_TOOL = {
                 "posicion_just": {
                     "type": "string",
                     "description": (
-                        "Justificación breve (≤150 chars). "
+                        "Justificación breve de la inferencia de la postura (≤150 chars). "
                         "Indica qué frase o inferencia concreta revela la postura. "
                         "Si hay ironía, señálalo explícitamente."
+                        "Nunca dejar vacío."
                     ),
                 },
 
@@ -128,7 +129,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "idioma_just": {
                     "type": "string",
-                    "description": "Justificación breve (≤150 chars): qué rasgo del texto revela el idioma.",
+                    "description": "Justificación breve (≤150 chars): Qué rasgo del texto revela el idioma detectado. Si idioma=['N/A'], explicar por qué no ha sido posible determinarlo. Nunca dejar vacío.",
                 },
 
                 # ── Geolocalización ────────────────────────────────────────────
@@ -144,7 +145,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "continente_just": {
                     "type": "string",
-                    "description": "Qué evidencia concreta del texto justifica el continente inferido (≤150 chars).",
+                    "description": "Qué evidencia concreta del texto justifica el continente inferido (≤150 chars). Si continente=['N/A'], explicar que el texto no aporta evidencia suficiente para inferir un continente. Nunca dejar vacío.",
                 },
                 "pais": {
                     "type": "array",
@@ -170,7 +171,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "region_just": {
                     "type": "string",
-                    "description": "Justificación breve de la región (≤100 chars). Vacío si no aplica.",
+                    "description": "Justificación breve de la asignación región (≤100 chars). Si pais=['N/A'], explicar que el texto no aporta evidencia suficiente para identificar un país. Nunca dejar vacío.",
                 },
                 "ciudad": {
                     "type": "string",
@@ -181,7 +182,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "ciudad_just": {
                     "type": "string",
-                    "description": "Justificación breve de la ciudad (≤100 chars). Vacío si no aplica.",
+                    "description": "Justificación breve del valor asignado a 'ciudad' (≤100 chars). Nunca dejar vacío",
                 },
 
                 # ── Pilares de aceptación política ────────────────────────────
@@ -196,7 +197,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "legitimacion_just": {
                     "type": "string",
-                    "description": "Qué frase o argumento revela la postura de legitimación (≤150 chars).",
+                    "description": "Justificación de la postura asignada de legitimación (≤150 chars). Nunca dejar vacío.",
                 },
                 "efectividad": {
                     "type": "integer",
@@ -209,7 +210,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "efectividad_just": {
                     "type": "string",
-                    "description": "Qué frase o argumento revela la postura de efectividad (≤150 chars).",
+                    "description": "Justificación de la postura asignada de efectividad (≤150 chars). Nunca dejar vacío.",
                 },
                 "justicia_eq": {
                     "type": "integer",
@@ -222,7 +223,7 @@ ANALYZE_POST_TOOL = {
                 },
                 "justicia_eq_just": {
                     "type": "string",
-                    "description": "Qué frase o argumento revela la postura de justicia/equidad (≤150 chars).",
+                    "description": "Justificación de la postura asignada de justicia/equidad (≤150 chars). Nunca dejar vacío.",
                 },
                 "confianza": {
                     "type": "integer",
@@ -235,17 +236,17 @@ ANALYZE_POST_TOOL = {
                 },
                 "confianza_just": {
                     "type": "string",
-                    "description": "Qué frase o argumento revela la postura de confianza institucional (≤150 chars).",
+                    "description": "Justificación de la postura asignada de confianza institucional (≤150 chars). Nunca dejar vacío.",
                 },
 
                 # ── Razonamiento interno del modelo (opcional) ─────────────────
-                "model_reasoning": {
-                    "type": "string",
-                    "description": (
-                        "OPCIONAL. Resumen muy breve (≤300 chars) del razonamiento interno del modelo. "
-                        "Útil para auditoría. No es necesario si el sistema emite 'reasoning' estructurado."
-                    ),
-                },
+                # "model_reasoning": {
+                #     "type": "string",
+                #     "description": (
+                #         "OPCIONAL. Resumen muy breve (≤300 chars) del razonamiento interno del modelo. "
+                #         "Útil para auditoría. No es necesario si el sistema emite 'reasoning' estructurado."
+                #     ),
+                # },
             },
         },
     },

@@ -35,7 +35,11 @@ from config import OUTPUT_SUFFIX, MODEL_NAME, TEMPERATURE, MAX_TOKENS, MAX_RETRI
 from schema import ANALYZE_POST_TOOL
 from utils import (
     DEFAULT_OUTPUT,
+    SAVE_EVERY,
     SubTopicRegistry,
+    _atomic_save,
+    _is_empty,
+    validate_completeness,
     build_context,
     call_model,
     detect_social,
@@ -241,37 +245,56 @@ def reprocess_csv(csv_path: Path, tema: str, desc_tema: str,
         if col in df.columns:
             df[col] = df[col].astype(object)
 
-    registry = SubTopicRegistry(output_folder)
+    registry  = SubTopicRegistry(output_folder)
+    out_path  = csv_path.with_name(csv_path.stem + "_reprocesado.csv")
+
+    # Filas pendientes: aquellas donde alguno de los target_fields sigue vacío
+    # (más preciso que _processed_ok porque los --fields pueden variar entre ejecuciones)
+    def _needs_reprocess(row) -> bool:
+        return any(_is_empty(row.get(f)) for f in target_fields)
+
+    pending_idxs  = [idx for idx, row in df.iterrows() if _needs_reprocess(row)]
+    total_pending = len(pending_idxs)
+    logger.info("  %d filas pendientes de %d totales", total_pending, len(df))
 
     ok = error = 0
-    for idx, row in df.iterrows():
-        contenido = safe_text(row.get("contenido"))
-        if not contenido:
-            continue
-        contexto = build_context(row, df, social)
-        if contexto == "BORRADO":
-            continue
-        try:
-            if fields:
-                # Prompt/tool reducidos: el LLM solo recibe y devuelve target_fields.
-                result = call_model_partial(tema, desc_tema, contexto, target_fields)
-            else:
-                # Sin --fields: se mantiene el comportamiento anterior (schema completo).
-                result = call_model(tema, desc_tema, contexto, subtopic_registry=registry)
-            # Solo tocamos las columnas detectadas como vacías; el resto de la fila queda intacto.
-            for k in target_fields:
-                v = result.get(k, DEFAULT_OUTPUT[k])
-                df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
-            ok += 1
-        except Exception as exc:
-            logger.error("  Error reprocesando fila %d: %s", idx, exc)
-            error += 1
 
-    out_path = csv_path.with_name(csv_path.stem + "_reprocesado.csv")
-    df.to_csv(out_path, index=False, sep=";", encoding="utf-8")
+    for batch_start in range(0, total_pending, SAVE_EVERY):
+        batch = pending_idxs[batch_start : batch_start + SAVE_EVERY]
+
+        for idx in batch:
+            row      = df.loc[idx]
+            contenido = safe_text(row.get("contenido"))
+            if not contenido:
+                continue
+            contexto = build_context(row, df, social)
+            if contexto == "BORRADO":
+                continue
+            try:
+                if fields:
+                    result = call_model_partial(tema, desc_tema, contexto, target_fields)
+                else:
+                    result = call_model(tema, desc_tema, contexto, subtopic_registry=registry)
+                for k in target_fields:
+                    v = result.get(k, DEFAULT_OUTPUT[k])
+                    df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                ok += 1
+            except Exception as exc:
+                logger.error("  Error reprocesando fila %d: %s", idx, exc)
+                error += 1
+
+        # Guardado atómico al final de cada lote
+        _atomic_save(df, out_path)
+        done = batch_start + len(batch)
+        logger.info("  💾 %d/%d  [ok=%d error=%d]", done, total_pending, ok, error)
+
+    # Validación final si el reproceso fue de *_just fields
+    if any(f.endswith("_just") for f in target_fields):
+        validate_completeness(df, out_path.name)
+
     logger.info(
-        "  Guardado: %s  [columnas reprocesadas=%s | ok=%d  error=%d]",
-        out_path.name, list(empty_cols.keys()), ok, error,
+        "  ✅ %s  [columnas=%s | ok=%d  error=%d]",
+        out_path.name, target_fields, ok, error,
     )
     return out_path
 

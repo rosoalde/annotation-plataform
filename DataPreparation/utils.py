@@ -20,6 +20,15 @@ from schema import ANALYZE_POST_TOOL
 
 logger = logging.getLogger(__name__)
 
+SAVE_EVERY = 10   # guardado atómico cada N filas procesadas
+
+def _atomic_save(df: pd.DataFrame, out_path: Path) -> None:
+    """Escribe en .tmp y luego renombra. Si el proceso se corta a mitad
+    de la escritura, el CSV final nunca queda corrupto."""
+    tmp = out_path.with_suffix(".tmp")
+    df.to_csv(tmp, index=False, sep=";", encoding="utf-8")
+    tmp.rename(out_path)   # atómico en Linux (mismo filesystem)
+
 # ── Tablas de normalización ────────────────────────────────────────────────────
 
 COUNTRY_TO_CONTINENT = {
@@ -75,7 +84,7 @@ DEFAULT_OUTPUT = {
     "legitimacion_just": "", "efectividad_just": "",
     "justicia_eq_just": "", "confianza_just": "",
     # Campo adicional para almacenar razonamiento del modelo (si está disponible)
-    "model_reasoning": "",
+    # "model_reasoning": "",
 }
 
 
@@ -364,6 +373,9 @@ def ensure_output_columns(df: pd.DataFrame) -> pd.DataFrame:
     for col in DEFAULT_OUTPUT:
         if col not in df.columns:
             df[col] = ""
+    # Marcador incremental: "1" = fila ya enviada al LLM y resultado guardado
+    if "_processed_ok" not in df.columns:
+        df["_processed_ok"] = ""
     return df
 
 
@@ -458,41 +470,115 @@ def call_model(tema: str, desc_tema: str, contenido: str, subtopic_registry: "Su
     raise RuntimeError(f"Modelo no respondió tras {MAX_RETRIES} intentos") from last_err
 
 
+# Campos *_just que deben estar rellenos cuando pertinente=True
+_JUST_FIELDS = [
+    "pertinente_just", "sent_subtopic_just", "subtopic_just", "posicion_just",
+    "idioma_just", "continente_just", "pais_just", "region_just", "ciudad_just",
+    "legitimacion_just", "efectividad_just", "justicia_eq_just", "confianza_just",
+]
+
+
+def _is_empty(val) -> bool:
+    if val is None:
+        return True
+    return str(val).strip().lower() in ("", "nan", "none", "[]")
+
+
+def validate_completeness(df: pd.DataFrame, path_name: str = "") -> dict:
+    """
+    Para filas donde pertinente=True, verifica que todos los *_just estén rellenos.
+    Devuelve {campo: n_filas_vacías}. Solo reporta campos con algún vacío.
+    Útil para detectar filas que necesitan --fields en reprocess_missing.py.
+    """
+    pert_mask = (
+        df.get("pertinente", pd.Series(dtype=str))
+        .astype(str).str.strip().str.lower()
+        .isin({"true", "1", "si", "sí"})
+    )
+    df_pert = df[pert_mask]
+
+    if df_pert.empty:
+        return {}
+
+    report = {}
+    for field in _JUST_FIELDS:
+        if field not in df_pert.columns:
+            report[field] = int(len(df_pert))
+            continue
+        n_empty = int(df_pert[field].apply(_is_empty).sum())
+        if n_empty > 0:
+            report[field] = n_empty
+
+    if report:
+        logger.warning("[%s] *_just vacíos en filas pertinentes (%d pert.): %s",
+                       path_name, len(df_pert), report)
+    else:
+        logger.info("[%s] ✅ Validación OK: todos los *_just rellenos en filas pertinentes (%d).",
+                    path_name, len(df_pert))
+    return report
+
 def run_file(path: Path, tema: str, desc_tema: str, subtopic_registry: "SubtopicRegistry | None" = None) -> Optional[str]:
-    """Analiza todas las filas de un CSV y guarda el resultado en output_folder."""
+    """Analiza filas de un CSV con guardado incremental y reanudación automática."""
     social = detect_social(path.stem)
     if social is None:
         logger.warning("No se detectó red social para: %s", path.name)
         return None
 
-    df = prepare_dataframe(path)
+    out_path = path.with_name(path.stem + OUTPUT_SUFFIX)
+
+    # ── Reanudación: si existe un output parcial previo, lo toma como punto de partida ──
+    src = out_path if out_path.exists() else path
+    if src == out_path:
+        logger.info("  ♻️  Reanudando desde output parcial: %s", src.name)
+
+    df = prepare_dataframe(src)
     if df.empty:
         logger.info("CSV vacío: %s", path.name)
         return None
 
-    df  = ensure_output_columns(df)
-    ok  = skip = error = 0
+    df = ensure_output_columns(df)
 
-    for idx, row in df.iterrows():
-        contenido = safe_text(row.get("contenido"))
-        if not contenido:
-            skip += 1
-            continue
-        contexto = build_context(row, df, social)
-        if contexto == "BORRADO":
-            skip += 1
-            continue
-        try:
-            result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
-            for k in DEFAULT_OUTPUT:
-                v = result.get(k, DEFAULT_OUTPUT[k])
-                df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
-            ok += 1
-        except Exception as exc:
-            logger.error("Error fila %d de %s: %s", idx, path.name, exc)
-            error += 1
+    # Filas aún no procesadas (sin marca _processed_ok="1")
+    pending_mask   = df["_processed_ok"].astype(str).str.strip() != "1"
+    pending_idxs   = df[pending_mask].index.tolist()
+    total_pending  = len(pending_idxs)
+    logger.info("%s: %d filas pendientes de %d totales", path.name, total_pending, len(df))
 
-    out_path = path.with_name(path.stem + OUTPUT_SUFFIX)
-    df.to_csv(out_path, index=False, sep=";", encoding="utf-8")
-    logger.info("%s → %s  [ok=%d  skip=%d  error=%d]", path.name, out_path.name, ok, skip, error)
+    ok = skip = error = 0
+
+    for batch_start in range(0, total_pending, SAVE_EVERY):
+        batch = pending_idxs[batch_start : batch_start + SAVE_EVERY]
+
+        for idx in batch:
+            row      = df.loc[idx]
+            contenido = safe_text(row.get("contenido"))
+            if not contenido:
+                skip += 1
+                continue
+            contexto = build_context(row, df, social)
+            if contexto == "BORRADO":
+                skip += 1
+                continue
+            try:
+                result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
+                for k in DEFAULT_OUTPUT:
+                    v = result.get(k, DEFAULT_OUTPUT[k])
+                    df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                df.at[idx, "_processed_ok"] = "1"
+                ok += 1
+            except Exception as exc:
+                logger.error("Error fila %d de %s: %s", idx, path.name, exc)
+                error += 1
+
+        # Guardado atómico al final de cada lote
+        _atomic_save(df, out_path)
+        done = batch_start + len(batch)
+        logger.info("  💾 %d/%d  [ok=%d skip=%d error=%d]", done, total_pending, ok, skip, error)
+
+    # Validación final: *_just completos en filas pertinentes
+    report = validate_completeness(df, path.name)
+    if report:
+        logger.warning("  ⚠️  *_just vacíos en filas pertinentes — considera reprocess_missing.py: %s", report)
+
+    logger.info("✅ %s → %s  [ok=%d  skip=%d  error=%d]", path.name, out_path.name, ok, skip, error)
     return str(out_path)
