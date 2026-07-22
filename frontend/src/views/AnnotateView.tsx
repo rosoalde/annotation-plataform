@@ -352,9 +352,11 @@ export default function AnnotateView() {
                                                     {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
                                                         <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
                                                     )}
-                                                    {(current !== llmVal || confirmedFields[rec.id]?.has(f.key) || fa.reason !== undefined) && (
-                                                        <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
+                                                    {justif && fa.reason === undefined && (
+                                                        <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "3px 0 0" }}
+                                                            onClick={() => setField(rec.id, f.key, { reason: justif })}>← adoptar justificación LLM</button>
                                                     )}
+                                                    <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                 </div>
                                             );
                                         })}
@@ -369,9 +371,11 @@ export default function AnnotateView() {
                                             <button style={{ fontSize: 10, color: "#6b7080", background: "transparent", border: "1px solid #252830", borderRadius: 5, padding: "3px 7px", marginTop: 5, cursor: "pointer", display: "block" }}
                                                 onClick={() => setAnn(rec.id, { topic: rec.topic_llm ?? "" })}>✓ Confirmar topic IA</button>
                                         )}
-                                        {ann.topic !== undefined && (
-                                            <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
+                                        {rec.justif_topic && ann.topic_reason === undefined && (
+                                            <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "3px 0 0", display: "block" }}
+                                                onClick={() => setAnn(rec.id, { topic_reason: rec.justif_topic ?? "" })}>← adoptar justificación LLM</button>
                                         )}
+                                        <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
                                     </FieldGroup>
 
                                     {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
@@ -385,9 +389,15 @@ export default function AnnotateView() {
                                                 </button>
                                             ))}
                                         </div>
-                                        {ann.sentiment !== undefined && (
-                                            <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
+                                        {ann.sentiment === undefined && rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && (
+                                            <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "5px 0 0", display: "block" }}
+                                                onClick={() => setAnn(rec.id, { sentiment: rec.sentiment_llm })}>← adoptar valor LLM</button>
                                         )}
+                                        {rec.justif_sentimiento && ann.sentiment_reason === undefined && (
+                                            <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "3px 0 0", display: "block" }}
+                                                onClick={() => setAnn(rec.id, { sentiment_reason: rec.justif_sentimiento ?? "" })}>← adoptar justificación LLM</button>
+                                        )}
+                                        <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
                                     </FieldGroup>
 
                                     {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
@@ -412,9 +422,15 @@ export default function AnnotateView() {
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    {sel !== undefined && (
-                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
+                                                    {pa.value === undefined && llmVal !== undefined && llmVal !== null && (
+                                                        <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "5px 0 0", display: "block" }}
+                                                            onClick={() => setPilar(rec.id, p.key, { value: llmVal })}>← adoptar valor LLM</button>
                                                     )}
+                                                    {justif && pa.reason === undefined && (
+                                                        <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "3px 0 0", display: "block" }}
+                                                            onClick={() => setPilar(rec.id, p.key, { reason: justif })}>← adoptar justificación LLM</button>
+                                                    )}
+                                                    <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
                                                 </div>
                                             );
                                         })}
@@ -470,9 +486,11 @@ export default function AnnotateView() {
                                                     {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
                                                         <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
                                                     )}
-                                                    {(current !== llmVal || confirmedFields[rec.id]?.has(f.key) || fa.reason !== undefined) && (
-                                                        <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
+                                                    {justif && fa.reason === undefined && (
+                                                        <button style={{ fontSize: 9, color: "#7a9bf5", background: "transparent", border: "none", cursor: "pointer", padding: "3px 0 0" }}
+                                                            onClick={() => setField(rec.id, f.key, { reason: justif })}>← adoptar justificación LLM</button>
                                                     )}
+                                                    <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                 </div>
                                             );
                                         })}
