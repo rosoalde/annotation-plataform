@@ -720,6 +720,8 @@ export default function JudgeView() {
                                                             </button>
                                                         ))}
                                                     </div>
+
+                                                    <div style={{ fontSize: 9, color: "var(--amber)", marginBottom: 4 }}>⚖️ Decisión final: </div>
                                                     {savedValue !== undefined && judgeFields[jKey] === undefined && (
                                                         <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada: {savedValue === 2 ? "N/A" : savedValue}</div>
                                                     )}
@@ -810,6 +812,7 @@ export default function JudgeView() {
                                                     </div>
                                                 ))}
                                             </div>
+                                            <div style={{ fontSize: 9, color: "var(--amber)", marginBottom: 4 }}>⚖️ Decisión final: </div>
                                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Valor final del juez..." value={draft}
