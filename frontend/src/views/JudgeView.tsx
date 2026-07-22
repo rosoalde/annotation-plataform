@@ -36,7 +36,7 @@ export default function JudgeView() {
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
     const [judgeFields, setJudgeFields] = useState<Record<string, string | number>>({});
-    const [adoptedFrom, setAdoptedFrom] = useState<Record<string, string>>({});
+    // const [adoptedFrom, setAdoptedFrom] = useState<Record<string, string>>({});
     const [editingDesc, setEditingDesc] = useState(false);
     const [descDraft, setDescDraft] = useState("");
 
@@ -403,11 +403,19 @@ export default function JudgeView() {
                                     {/* LLM */}
                                     <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "6px 10px", fontSize: 10 }}>
                                         <div style={{ color: "var(--muted)", marginBottom: 2 }}>🤖 LLM: <strong style={{ color: "var(--text)" }}>{record.topic_llm || "—"}</strong></div>
-                                        <button
-                                            style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                            onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: record.topic_llm ?? "", [`${record.id}__topic__reason`]: record.justif_topic ?? "" }))}>
-                                            ← adoptar
-                                        </button>
+                                        {record.justif_topic && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{record.justif_topic}</div>}
+                                        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: record.topic_llm ?? "" }))}>
+                                                ← valor
+                                            </button>
+                                            {record.justif_topic && (
+                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: record.justif_topic ?? "" }))}>
+                                                    ← justif.
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     {/* Annotators' topic values */}
                                     {sentAnns.filter(a => a.corrected_topic).map(a => (
@@ -416,11 +424,18 @@ export default function JudgeView() {
                                                 👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_topic}</strong>
                                             </div>
                                             {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                            <button
-                                                style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: a.corrected_topic ?? "", [`${record.id}__topic__reason`]: a.correction_reason ?? "" }))}>
-                                                ← adoptar
-                                            </button>
+                                            <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: a.corrected_topic ?? "" }))}>
+                                                    ← valor
+                                                </button>
+                                                {a.correction_reason && (
+                                                    <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: a.correction_reason ?? "" }))}>
+                                                        ← justif.
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -442,7 +457,7 @@ export default function JudgeView() {
                                                     onChange={e => setJudgeFields(p => ({ ...p, [jTopicKey]: e.target.value }))} />
                                                 <input
                                                     style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Motivo (opcional)..."
+                                                    placeholder="Justificación de tu asignación..."
                                                     value={topicReason}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jTopicKey}__reason`]: e.target.value }))} />
                                                 <button
@@ -486,10 +501,18 @@ export default function JudgeView() {
                                                     <div style={{ color: "var(--muted)", marginBottom: 2 }}>🤖 LLM: <strong style={{ color: "var(--text)" }}>{llmVal || "—"}</strong></div>
                                                     {llmJustif && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{llmJustif}</div>}
                                                     {llmVal && (
-                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                            onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: llmJustif ?? "" }))}>
-                                                            ← adoptar
-                                                        </button>
+                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                ← valor
+                                                            </button>
+                                                            {llmJustif && (
+                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" }))}>
+                                                                    ← justif.
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 {/* Anotadores */}
@@ -502,10 +525,18 @@ export default function JudgeView() {
                                                             👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_text ?? "—"}</strong>
                                                         </div>
                                                         {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                            onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
-                                                            ← adoptar
-                                                        </button>
+                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" }))}>
+                                                                ← valor
+                                                            </button>
+                                                            {a.correction_reason && (
+                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                                    ← justif.
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -514,7 +545,7 @@ export default function JudgeView() {
                                                     placeholder="Valor final del juez..." value={draft}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Motivo (opcional)..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!draft}
                                                     onClick={() => { const reason = (judgeFields[`${jKey}__reason`] as string) || undefined; existing ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft, reason }) : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }); }}
@@ -540,14 +571,18 @@ export default function JudgeView() {
                                         <div style={{ fontSize: 12, fontWeight: 600, color: sentColor(record.sentiment_llm) }}>{sentLabel(record.sentiment_llm)}</div>
                                         {record.topic_llm && <div style={{ fontSize: 10, color: "var(--muted)" }}>topic: {record.topic_llm}</div>}
                                         {record.justif_sentimiento && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{record.justif_sentimiento}</div>}
-                                        <button
-                                            style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 4 }}
-                                            onClick={() => {
-                                                setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: record.sentiment_llm ?? 0, [`${record.id}__sentiment_reason`]: record.justif_sentimiento ?? "" }));
-                                                setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: "🤖 LLM" }));
-                                            }}>
-                                            ← adoptar
-                                        </button>
+                                        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: record.sentiment_llm ?? 0 }))}>
+                                                ← valor
+                                            </button>
+                                            {record.justif_sentimiento && (
+                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: record.justif_sentimiento ?? "" }))}>
+                                                    ← justif.
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                     {/* Cada anotador */}
                                     {sentAnns.map(a => (
@@ -556,14 +591,18 @@ export default function JudgeView() {
                                             <div style={{ fontSize: 12, fontWeight: 600, color: sentColor(a.corrected_sentiment) }}>{sentLabel(a.corrected_sentiment)}</div>
                                             {a.corrected_topic && <div style={{ fontSize: 10, color: "var(--muted)" }}>topic: {a.corrected_topic}</div>}
                                             {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                            <button
-                                                style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 4 }}
-                                                onClick={() => {
-                                                    setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: a.corrected_sentiment ?? record.sentiment_llm ?? 0, [`${record.id}__sentiment_reason`]: a.correction_reason ?? "" }));
-                                                    setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: `👤 ${a.annotator}` }));
-                                                }}>
-                                                ← adoptar
-                                            </button>
+                                            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: a.corrected_sentiment ?? record.sentiment_llm ?? 0 }))}>
+                                                    ← valor
+                                                </button>
+                                                {a.correction_reason && (
+                                                    <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: a.correction_reason ?? "" }))}>
+                                                        ← justif.
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -587,42 +626,23 @@ export default function JudgeView() {
                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada</div>
                                 )}
 
-                                {judgeFields[`${record.id}__sentiment`] !== undefined && sentAnns[0] && (
+                                {judgeFields[`${record.id}__sentiment`] !== undefined && (
                                     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                                        {adoptedFrom[`${record.id}__sentiment`] ? (
-                                            <div style={{ fontSize: 9, color: "var(--accent2)", marginTop: 6 }}>
-                                                ↩ Adoptado de {adoptedFrom[`${record.id}__sentiment`]}.{" "}
-                                                <button style={{ fontSize: 9, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}
-                                                    onClick={() => setAdoptedFrom(p => { const n = { ...p }; delete n[`${record.id}__sentiment`]; return n; })}>
-                                                    Editar manualmente
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <textarea rows={1} placeholder="Motivo de la decisión del juez (opcional)..."
-                                                style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none", fontFamily: "inherit" }}
-                                                value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? ""}
-                                                onChange={(e) => setJudgeFields((p) => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
-                                        )}
-
+                                        <textarea rows={1} placeholder="Justificación de tu asignación..."
+                                            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
+                                            value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? ""}
+                                            onChange={(e) => setJudgeFields((p) => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
                                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                             <button
-                                                onClick={() =>
-                                                    judgeFieldMutation.mutate({
-                                                        annotationId: sentAnns[0].id,
-                                                        finalValue: judgeFields[`${record.id}__sentiment`] as number,
-                                                        reason: (judgeFields[`${record.id}__sentiment_reason`] as string) || undefined,
-                                                    })
-                                                }
-                                                style={{
-                                                    padding: "5px 12px",
-                                                    borderRadius: "var(--r)",
-                                                    background: "var(--accent)",
-                                                    color: "#fff",
-                                                    border: "none",
-                                                    fontSize: 11,
-                                                    cursor: "pointer",
+                                                onClick={() => {
+                                                    const finalValue = judgeFields[`${record.id}__sentiment`] as number;
+                                                    const reason = (judgeFields[`${record.id}__sentiment_reason`] as string) || undefined;
+                                                    if (sentAnns[0])
+                                                        judgeFieldMutation.mutate({ annotationId: sentAnns[0].id, finalValue, reason });
+                                                    else
+                                                        judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
                                                 }}
-                                            >
+                                                style={{ padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
                                                 Guardar sentimiento →
                                             </button>
                                         </div>
@@ -652,14 +672,18 @@ export default function JudgeView() {
                                                             <strong>{llmVal !== undefined ? (llmVal === 2 ? "N/A" : llmVal) : "—"}</strong>
                                                             {justif && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{justif}</div>}
                                                             {llmVal !== undefined && (
-                                                                <button
-                                                                    style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: "2px 0", marginTop: 2 }}
-                                                                    onClick={() => {
-                                                                        setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: justif ?? "" }));
-                                                                        setAdoptedFrom(p => ({ ...p, [jKey]: "🤖 LLM" }));
-                                                                    }}>
-                                                                    ← adoptar
-                                                                </button>
+                                                                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                                    <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                        ← valor
+                                                                    </button>
+                                                                    {justif && (
+                                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                            onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: justif ?? "" }))}>
+                                                                            ← justif.
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </div>
                                                         {annotatorVals.length === 0 && (
@@ -670,11 +694,18 @@ export default function JudgeView() {
                                                                 <span style={{ color: "var(--muted)" }}>👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: </span>
                                                                 <strong>{a.corrected_value !== undefined ? (a.corrected_value === 2 ? "N/A" : a.corrected_value) : "—"}</strong>
                                                                 {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                                                <button
-                                                                    style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                                    onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_value, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
-                                                                    ← adoptar
-                                                                </button>
+                                                                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                                    <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                        onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_value }))}>
+                                                                        ← valor
+                                                                    </button>
+                                                                    {a.correction_reason && (
+                                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                            onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                                            ← justif.
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -692,20 +723,10 @@ export default function JudgeView() {
                                                     )}
                                                     {sel !== undefined && (
                                                         <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
-                                                            {adoptedFrom[jKey] ? (
-                                                                <div style={{ fontSize: 9, color: "var(--accent2)", marginTop: 4 }}>
-                                                                    ↩ Adoptado de {adoptedFrom[jKey]}.{" "}
-                                                                    <button style={{ fontSize: 9, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", textDecoration: "underline" }}
-                                                                        onClick={() => setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; })}>
-                                                                        Editar manualmente
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <textarea rows={1} placeholder="Motivo del juez (opcional)..."
-                                                                    style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
-                                                                    value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
-                                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
-                                                            )}
+                                                            <textarea rows={1} placeholder="Justificación de tu asignación..."
+                                                                style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
+                                                                value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                                onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                                                 <button
                                                                     onClick={() => {
@@ -748,10 +769,18 @@ export default function JudgeView() {
                                                     <div style={{ color: "var(--muted)", marginBottom: 2 }}>🤖 LLM: <strong style={{ color: "var(--text)" }}>{llmVal || "—"}</strong></div>
                                                     {llmJustif && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{llmJustif}</div>}
                                                     {llmVal && (
-                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                            onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal, [`${jKey}__reason`]: llmJustif ?? "" }))}>
-                                                            ← adoptar
-                                                        </button>
+                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                ← valor
+                                                            </button>
+                                                            {llmJustif && (
+                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" }))}>
+                                                                    ← justif.
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                                 {/* Anotadores */}
@@ -764,10 +793,18 @@ export default function JudgeView() {
                                                             👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_text ?? "—"}</strong>
                                                         </div>
                                                         {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                                        <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0, marginTop: 2 }}
-                                                            onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "", [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
-                                                            ← adoptar
-                                                        </button>
+                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" }))}>
+                                                                ← valor
+                                                            </button>
+                                                            {a.correction_reason && (
+                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
+                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                                    ← justif.
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
@@ -776,7 +813,7 @@ export default function JudgeView() {
                                                     placeholder="Valor final del juez..." value={draft}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Motivo (opcional)..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!draft}
                                                     onClick={() => { const reason = (judgeFields[`${jKey}__reason`] as string) || undefined; existing ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft, reason }) : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }); }}

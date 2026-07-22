@@ -135,23 +135,25 @@ export default function AnnotateView() {
 
             for (const p of PILARS) {
                 const pa = ann.pilars[p.key];
-                if (!pa || pa.value === undefined) continue;
+                if (!pa || (pa.value === undefined && pa.reason === undefined)) continue;
                 const llmVal = (rec as any)[p.key] as number | undefined;
+                const valueToSave = pa.value !== undefined ? pa.value : (llmVal ?? 2);
                 calls.push(annotationsApi.savePilar(projectId!, {
                     record_id: rec.id, project_id: projectId!, pilar: p.key,
-                    original_value: llmVal ?? 2, corrected_value: pa.value,
-                    is_correction: pa.value !== llmVal, correction_reason: pa.reason ?? undefined,
+                    original_value: llmVal ?? 2, corrected_value: valueToSave,
+                    is_correction: valueToSave !== llmVal, correction_reason: pa.reason ?? undefined,
                 }));
             }
 
             for (const f of TEXT_FIELDS) {
                 const fa = ann.fields[f.key];
-                if (!fa || fa.value === undefined) continue;
+                if (!fa || (fa.value === undefined && fa.reason === undefined)) continue;
                 const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+                const valueToSave = fa.value !== undefined ? fa.value : llmVal;
                 calls.push(annotationsApi.saveField(projectId!, {
                     record_id: rec.id, project_id: projectId!, field_name: f.key,
-                    original_text: llmVal, corrected_text: fa.value,
-                    is_correction: fa.value !== llmVal, correction_reason: fa.reason ?? undefined,
+                    original_text: llmVal, corrected_text: valueToSave,
+                    is_correction: valueToSave !== llmVal, correction_reason: fa.reason ?? undefined,
                 }));
             }
 
@@ -192,7 +194,7 @@ export default function AnnotateView() {
             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
             if (!llmVal) return false;
             const fa = ann.fields[f.key];
-            return fa?.value === undefined && !confirmed.has(f.key);
+            return fa?.value === undefined && fa?.reason === undefined && !confirmed.has(f.key);
         });
 
         if (unconfirmed.length > 0) {
@@ -350,7 +352,7 @@ export default function AnnotateView() {
                                                     {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
                                                         <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
                                                     )}
-                                                    {current !== llmVal && (
+                                                    {(current !== llmVal || confirmedFields[rec.id]?.has(f.key) || fa.reason !== undefined) && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                     )}
                                                 </div>
@@ -363,7 +365,11 @@ export default function AnnotateView() {
                                         <input style={S.input}
                                             value={ann.topic ?? rec.topic_llm ?? ""}
                                             onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
-                                        {ann.topic !== undefined && ann.topic !== rec.topic_llm && (
+                                        {ann.topic === undefined && rec.topic_llm && (
+                                            <button style={{ fontSize: 10, color: "#6b7080", background: "transparent", border: "1px solid #252830", borderRadius: 5, padding: "3px 7px", marginTop: 5, cursor: "pointer", display: "block" }}
+                                                onClick={() => setAnn(rec.id, { topic: rec.topic_llm ?? "" })}>✓ Confirmar topic IA</button>
+                                        )}
+                                        {ann.topic !== undefined && (
                                             <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
                                         )}
                                     </FieldGroup>
@@ -379,7 +385,7 @@ export default function AnnotateView() {
                                                 </button>
                                             ))}
                                         </div>
-                                        {currentSent !== rec.sentiment_llm && (
+                                        {ann.sentiment !== undefined && (
                                             <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
                                         )}
                                     </FieldGroup>
@@ -406,7 +412,7 @@ export default function AnnotateView() {
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    {sel !== llmVal && (
+                                                    {sel !== undefined && (
                                                         <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
                                                     )}
                                                 </div>
@@ -464,7 +470,7 @@ export default function AnnotateView() {
                                                     {(fa.value !== undefined || confirmedFields[rec.id]?.has(f.key)) && (
                                                         <div style={{ fontSize: 9, color: "#2ec27e", marginTop: 3 }}>✓ revisado</div>
                                                     )}
-                                                    {current !== llmVal && (
+                                                    {(current !== llmVal || confirmedFields[rec.id]?.has(f.key) || fa.reason !== undefined) && (
                                                         <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
                                                     )}
                                                 </div>
