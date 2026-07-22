@@ -230,6 +230,7 @@ export interface JudgeAnnotation {
     corrected_sentiment?: number;
     correction_reason?: string;
     corrected_topic?: string;
+    topic_reason?: string;
     corrected_value?: number;
     pilar?: string;
     field_name?: string;
@@ -237,6 +238,7 @@ export interface JudgeAnnotation {
     is_correction: boolean;
     judge_final_value?: number;
     judge_final_text?: string;
+    judge_reason?: string;
     reviewer_decision?: "accept" | "reject";
 }
 

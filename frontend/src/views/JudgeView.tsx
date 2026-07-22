@@ -186,6 +186,12 @@ export default function JudgeView() {
         await Promise.all(saves);
         showToast("Todo guardado ✓");
         setCompletedIds(prev => new Set(prev).add(record.id));
+        // Limpiar judgeFields de este record → botón vuelve a gris
+        setJudgeFields(prev => {
+            const n = { ...prev };
+            Object.keys(n).filter(k => k.startsWith(record.id)).forEach(k => delete n[k]);
+            return n;
+        });
         // Scroll al siguiente record
         const idx = (data ?? []).findIndex(d => d.record.id === record.id);
         if (idx !== -1 && idx < (data?.length ?? 0) - 1) {
@@ -342,6 +348,17 @@ export default function JudgeView() {
                         </div>
                     </div>
                 )}
+                {data && data.length > 0 && (
+                    <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 14, marginBottom: 16 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                            <span style={{ fontSize: 11, color: "var(--muted)" }}>Progreso</span>
+                            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text)" }}>{completedIds.size} / {data.length} juzgados</span>
+                        </div>
+                        <div style={{ height: 3, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+                            <div style={{ height: "100%", background: "var(--accent)", borderRadius: 2, width: `${data.length > 0 ? (completedIds.size / data.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+                        </div>
+                    </div>
+                )}
                 {!data?.length && (
                     <div style={{ textAlign: "center", padding: "48px 20px", color: "var(--muted)" }}>
                         <div style={{ fontSize: 28, marginBottom: 8 }}>⚖️</div>
@@ -463,7 +480,16 @@ export default function JudgeView() {
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!draft}
-                                                    onClick={() => { const reason = (judgeFields[`${jKey}__reason`] as string) || undefined; existing ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft, reason }) : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }); }}
+                                                    onClick={async () => {
+                                                        const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                                                        try {
+                                                            if (existing)
+                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
+                                                            else
+                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
+                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                        } catch { }
+                                                    }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: draft ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: draft ? "pointer" : "default" }}>
                                                     Guardar →
                                                 </button>
@@ -503,15 +529,15 @@ export default function JudgeView() {
                                             <div style={{ color: "var(--muted)", marginBottom: 2 }}>
                                                 👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_topic}</strong>
                                             </div>
-                                            {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
+                                            {a.topic_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.topic_reason}</div>}
                                             <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
                                                     onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: a.corrected_topic ?? "" }))}>
                                                     ← valor
                                                 </button>
-                                                {a.correction_reason && (
+                                                {a.topic_reason && (
                                                     <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: a.correction_reason ?? "" }))}>
+                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: a.topic_reason ?? "" }))}>
                                                         ← justif.
                                                     </button>
                                                 )}
@@ -542,13 +568,19 @@ export default function JudgeView() {
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jTopicKey}__reason`]: e.target.value }))} />
                                                 <button
                                                     disabled={!topicDraft}
-                                                    onClick={() => existingAnn
-                                                        ? judgeFieldTextMutation.mutate({ annotationId: existingAnn.id, finalText: topicDraft, reason: topicReason || undefined })
-                                                        : judgeDecideNewMutation.mutate({
-                                                            record_id: record.id, project_id: projectId!,
-                                                            annotation_type: "field", field_name: "topic",
-                                                            final_text: topicDraft, reason: topicReason || undefined,
-                                                        })}
+                                                    onClick={async () => {
+                                                        try {
+                                                            if (existingAnn)
+                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existingAnn.id, finalText: topicDraft, reason: topicReason || undefined });
+                                                            else
+                                                                await judgeDecideNewMutation.mutateAsync({
+                                                                    record_id: record.id, project_id: projectId!,
+                                                                    annotation_type: "field", field_name: "topic",
+                                                                    final_text: topicDraft, reason: topicReason || undefined,
+                                                                });
+                                                            setJudgeFields(p => { const n = { ...p }; delete n[jTopicKey]; delete n[`${jTopicKey}__reason`]; return n; });
+                                                        } catch { }
+                                                    }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: topicDraft ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: topicDraft ? "pointer" : "default" }}>
                                                     Guardar topic →
                                                 </button>
@@ -634,13 +666,17 @@ export default function JudgeView() {
                                             onChange={(e) => setJudgeFields((p) => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
                                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                             <button
-                                                onClick={() => {
-                                                    const finalValue = judgeFields[`${record.id}__sentiment`] as number;
-                                                    const reason = (judgeFields[`${record.id}__sentiment_reason`] as string) || undefined;
-                                                    if (sentAnns[0])
-                                                        judgeFieldMutation.mutate({ annotationId: sentAnns[0].id, finalValue, reason });
-                                                    else
-                                                        judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
+                                                onClick={async () => {
+                                                    const sentKey = `${record.id}__sentiment`;
+                                                    const finalValue = judgeFields[sentKey] as number;
+                                                    const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
+                                                    try {
+                                                        if (sentAnns[0])
+                                                            await judgeFieldMutation.mutateAsync({ annotationId: sentAnns[0].id, finalValue, reason });
+                                                        else
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
+                                                        setJudgeFields(p => { const n = { ...p }; delete n[sentKey]; delete n[`${sentKey}_reason`]; return n; });
+                                                    } catch { }
                                                 }}
                                                 style={{ padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
                                                 Guardar sentimiento →
@@ -735,11 +771,15 @@ export default function JudgeView() {
                                                                 onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                                                 <button
-                                                                    onClick={() => {
+                                                                    onClick={async () => {
                                                                         const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                                                                        annotatorVals[0]
-                                                                            ? judgeFieldMutation.mutate({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason })
-                                                                            : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
+                                                                        try {
+                                                                            if (annotatorVals[0])
+                                                                                await judgeFieldMutation.mutateAsync({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason });
+                                                                            else
+                                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
+                                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                                        } catch { }
                                                                     }}
                                                                     style={{ padding: "3px 10px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer" }}>
                                                                     Guardar →
@@ -823,7 +863,16 @@ export default function JudgeView() {
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!draft}
-                                                    onClick={() => { const reason = (judgeFields[`${jKey}__reason`] as string) || undefined; existing ? judgeFieldTextMutation.mutate({ annotationId: existing.id, finalText: draft, reason }) : judgeDecideNewMutation.mutate({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }); }}
+                                                    onClick={async () => {
+                                                        const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                                                        try {
+                                                            if (existing)
+                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
+                                                            else
+                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
+                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                        } catch { }
+                                                    }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: draft ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: draft ? "pointer" : "default" }}>
                                                     Guardar →
                                                 </button>
@@ -836,13 +885,21 @@ export default function JudgeView() {
                                 })}
                             </div>
                             {/* Botón Guardar todo y siguiente */}
-                            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
-                                <button
-                                    onClick={() => handleSaveAll(record)}
-                                    style={{ padding: "7px 16px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                    Guardar todo y siguiente →
-                                </button>
-                            </div>
+                            {(() => {
+                                const hasPending = Object.keys(judgeFields).some(k => k.startsWith(record.id));
+                                return (
+                                    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                                        {hasPending && (
+                                            <span style={{ fontSize: 10, color: "var(--amber)" }}>⚠ Hay cambios sin guardar individualmente</span>
+                                        )}
+                                        <button
+                                            onClick={() => handleSaveAll(record)}
+                                            style={{ padding: "7px 16px", borderRadius: "var(--r)", background: hasPending ? "var(--accent)" : "var(--border2)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                                            {hasPending ? "Guardar todo y siguiente →" : "Siguiente →"}
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     );
                 })}

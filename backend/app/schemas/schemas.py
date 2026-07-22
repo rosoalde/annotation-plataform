@@ -299,6 +299,7 @@ class JudgeAnnotationOut(BaseModel):
     corrected_sentiment: Optional[int]
     correction_reason: Optional[str]
     corrected_topic: Optional[str]
+    topic_reason: Optional[str] = None
     corrected_value: Optional[int]
     pilar: Optional[str]
     field_name: Optional[str] = None      

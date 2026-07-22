@@ -47,7 +47,7 @@ async def judge_records(
                 id=a.id, annotator=a.annotator.username if a.annotator else "?",
                 annotation_type=a.annotation_type,
                 corrected_sentiment=a.corrected_sentiment, correction_reason=a.correction_reason,
-                corrected_topic=a.corrected_topic, corrected_value=a.corrected_value,
+                corrected_topic=a.corrected_topic, topic_reason=a.topic_reason, corrected_value=a.corrected_value,
                 pilar=a.pilar, field_name=a.field_name, corrected_text=a.corrected_text,
                 is_correction=a.is_correction, judge_final_value=a.judge_final_value,
                 judge_final_text=a.judge_final_text, judge_reason=a.judge_reason,
