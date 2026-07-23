@@ -1,6 +1,6 @@
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { judgeApi, annotationsApi, projectsApi } from "../services/api";
 import type { KeywordItem } from "../types";
 
@@ -32,7 +32,9 @@ export default function JudgeView() {
     // el backend los sigue devolviendo (para poder editarlos más tarde si hace
     // falta), pero acá los ocultamos de la cola para que se comporten como en
     // Anotar — al guardar, desaparecen en vez de solo bajar a la siguiente.
+    // Se inicializa vacío; se sincroniza con la BD en cuanto llegan los datos.
     const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+    const [collapsedInitialized, setCollapsedInitialized] = useState(false);
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
     const [judgeFields, setJudgeFields] = useState<Record<string, string | number>>({});
@@ -241,6 +243,24 @@ export default function JudgeView() {
         queryFn: () => judgeApi.records(projectId!),
         enabled: !!projectId,
     });
+
+    // Sincronizar collapsedIds con el estado real de la BD al cargar los datos.
+    // Un registro está "juzgado" si su status es "judged" O si tiene al menos
+    // una anotación con judge_final_value/judge_final_text no nulo.
+    useEffect(() => {
+        if (!data || collapsedInitialized) return;
+        const judged = new Set(
+            data
+                .filter(({ record, annotations }) =>
+                    record.status === "judged" ||
+                    annotations.some(a => a.judge_final_value != null || a.judge_final_text != null)
+                )
+                .map(({ record }) => record.id)
+        );
+        if (judged.size > 0) setCollapsedIds(judged);
+        setCollapsedInitialized(true);
+    }, [data, collapsedInitialized]);
+
     // Oculta de la cola los registros ya guardados en esta sesión con
     // "Guardar todo y siguiente" (el backend los sigue devolviendo, para
     // poder reabrirlos después si hace falta).

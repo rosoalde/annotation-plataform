@@ -131,15 +131,43 @@ async def judge_decide_new(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("judge", "admin")),
 ):
-    """Crea la decisión del juez cuando ningún anotador corrigió ese pilar/campo."""
-    ann = Annotation(
-        record_id=body.record_id, project_id=body.project_id,
-        annotator_id=current_user.id, annotation_type=body.annotation_type,
-        pilar=body.pilar, field_name=body.field_name,
-        is_correction=False, judge_reason=body.reason,
-        judge_final_value=body.final_value, judge_final_text=body.final_text,
+    """
+    Upsert: si ya existe una anotación del juez para este record+tipo+campo,
+    la actualiza. Si no, la crea. Evita duplicados en ediciones sucesivas.
+    """
+    q = select(Annotation).where(
+        Annotation.record_id       == body.record_id,
+        Annotation.annotation_type == body.annotation_type,
+        Annotation.annotator_id    == current_user.id,
     )
-    db.add(ann)
+    if body.pilar:
+        q = q.where(Annotation.pilar == body.pilar)
+    if body.field_name:
+        q = q.where(Annotation.field_name == body.field_name)
+    if body.annotation_type == "sentiment":
+        q = q.where(Annotation.pilar == None, Annotation.field_name == None)
+
+    result = await db.execute(q)
+    ann    = result.scalar_one_or_none()
+
+    if ann:
+        # Ya existe: actualiza en vez de insertar
+        if body.final_value is not None:
+            ann.judge_final_value = body.final_value
+        if body.final_text is not None:
+            ann.judge_final_text = body.final_text
+        if body.reason is not None:
+            ann.judge_reason = body.reason
+    else:
+        ann = Annotation(
+            record_id=body.record_id, project_id=body.project_id,
+            annotator_id=current_user.id, annotation_type=body.annotation_type,
+            pilar=body.pilar, field_name=body.field_name,
+            is_correction=False, judge_reason=body.reason,
+            judge_final_value=body.final_value, judge_final_text=body.final_text,
+        )
+        db.add(ann)
+
     await db.commit()
     return {"ok": True, "id": ann.id}
 
