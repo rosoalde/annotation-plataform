@@ -32,7 +32,7 @@ export default function JudgeView() {
     // el backend los sigue devolviendo (para poder editarlos más tarde si hace
     // falta), pero acá los ocultamos de la cola para que se comporten como en
     // Anotar — al guardar, desaparecen en vez de solo bajar a la siguiente.
-    const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+    const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
     const [judgeFields, setJudgeFields] = useState<Record<string, string | number>>({});
@@ -178,30 +178,33 @@ export default function JudgeView() {
             }
         }
 
-        if (saves.length === 0) {
-            setCompletedIds(prev => new Set(prev).add(record.id));
-            const idx = (data ?? []).findIndex(d => d.record.id === record.id);
-            if (idx !== -1 && idx < (data?.length ?? 0) - 1) {
-                document.getElementById(`judge-rec-${(data ?? [])[idx + 1].record.id}`)?.scrollIntoView({ behavior: "smooth" });
+        const collapseAndNext = () => {
+            setCollapsedIds(prev => new Set(prev).add(record.id));
+            const allData = data ?? [];
+            const idx = allData.findIndex(d => d.record.id === record.id);
+            const nextPending = allData.slice(idx + 1).find(d => !collapsedIds.has(d.record.id));
+            if (nextPending) {
+                setTimeout(() => {
+                    document.getElementById(`judge-rec-${nextPending.record.id}`)?.scrollIntoView({ behavior: "smooth" });
+                }, 50);
             }
+        };
+
+        if (saves.length === 0) {
+            collapseAndNext();
             return;
         }
 
         await Promise.all(saves);
         showToast("Todo guardado ✓");
-        setCompletedIds(prev => new Set(prev).add(record.id));
-        // Limpiar judgeFields de este record → botón vuelve a gris
         setJudgeFields(prev => {
             const n = { ...prev };
             Object.keys(n).filter(k => k.startsWith(record.id)).forEach(k => delete n[k]);
             return n;
         });
-        // Scroll al siguiente record
-        const idx = (data ?? []).findIndex(d => d.record.id === record.id);
-        if (idx !== -1 && idx < (data?.length ?? 0) - 1) {
-            document.getElementById(`judge-rec-${(data ?? [])[idx + 1].record.id}`)?.scrollIntoView({ behavior: "smooth" });
-        }
+        collapseAndNext();
     };
+
     const handleExport = async (format: "jsonl" | "csv", mode: "judge" | "annotators" | "all") => {
         if (!projectId) return;
         setExporting(true);
@@ -239,7 +242,7 @@ export default function JudgeView() {
     // Oculta de la cola los registros ya guardados en esta sesión con
     // "Guardar todo y siguiente" (el backend los sigue devolviendo, para
     // poder reabrirlos después si hace falta).
-    const visibleData = data?.filter(d => !completedIds.has(d.record.id));
+    const visibleData = data;
     const { data: keywords } = useQuery({
         queryKey: ["keywords", projectId],
         queryFn: () => annotationsApi.listKeywords(projectId!) as Promise<KeywordItem[]>,
@@ -284,7 +287,7 @@ export default function JudgeView() {
             <div style={S.topbar}>
                 <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", flex: 1 }}>⚖️ Decisiones del juez</span>
                 <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 100, background: "var(--card)", border: "1px solid var(--border)", color: "var(--accent2)", fontFamily: "monospace" }}>
-                    {visibleData?.length ?? 0} registros
+                    {(data?.length ?? 0) - collapsedIds.size} pendientes / {data?.length ?? 0}
                 </span>
                 <a ref={downloadRef} style={{ display: "none" }} />
                 <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
@@ -356,10 +359,10 @@ export default function JudgeView() {
                     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 14, marginBottom: 16 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                             <span style={{ fontSize: 11, color: "var(--muted)" }}>Progreso</span>
-                            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text)" }}>{completedIds.size} / {data.length} juzgados</span>
+                            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text)" }}>{collapsedIds.size} / {data.length} juzgados</span>
                         </div>
                         <div style={{ height: 3, background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
-                            <div style={{ height: "100%", background: "var(--accent)", borderRadius: 2, width: `${data.length > 0 ? (completedIds.size / data.length) * 100 : 0}%`, transition: "width 0.3s" }} />
+                            <div style={{ height: "100%", background: "var(--accent)", borderRadius: 2, width: `${data.length > 0 ? (collapsedIds.size / data.length) * 100 : 0}%`, transition: "width 0.3s" }} />
                         </div>
                     </div>
                 )}
@@ -375,6 +378,7 @@ export default function JudgeView() {
                     // Separar anotaciones por tipo
                     const sentAnns = annotations.filter(a => a.annotation_type === "sentiment");
                     const savedSentiment = sentAnns.find(a => a.judge_final_value != null)?.judge_final_value;
+                    const savedSentimentReason = sentAnns.find(a => a.judge_final_value != null)?.correction_reason ?? undefined;
                     const pilarAnns = annotations.filter(a => a.annotation_type === "pilar");
                     const fieldAnns = annotations.filter(a => a.annotation_type === "field");
                     // Agrupar pilares por nombre
@@ -386,6 +390,28 @@ export default function JudgeView() {
                     const fieldsByKey: Record<string, typeof fieldAnns> = {};
                     for (const a of fieldAnns) {
                         if (a.field_name) { fieldsByKey[a.field_name] = fieldsByKey[a.field_name] ?? []; fieldsByKey[a.field_name].push(a); }
+                    }
+
+                    if (collapsedIds.has(record.id)) {
+                        return (
+                            <div key={record.id} id={`judge-rec-${record.id}`}
+                                style={{ ...S.recCard, borderColor: "var(--green)", opacity: 0.75 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                    <span style={{ fontSize: 9, color: "var(--green)", flexShrink: 0 }}>✓ Juzgado</span>
+                                    <span style={{ fontSize: 9, color: "var(--muted)", flexShrink: 0 }}>
+                                        [{record.platform} · {record.tipo} · {record.fecha}]
+                                    </span>
+                                    <span style={{ flex: 1, fontSize: 12, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
+                                        {record.content?.slice(0, 100)}{(record.content?.length ?? 0) > 100 ? "…" : ""}
+                                    </span>
+                                    <button
+                                        style={{ fontSize: 10, color: "var(--muted)", background: "transparent", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "2px 8px", cursor: "pointer", flexShrink: 0 }}
+                                        onClick={() => setCollapsedIds(prev => { const n = new Set(prev); n.delete(record.id); return n; })}>
+                                        Reabrir ↕
+                                    </button>
+                                </div>
+                            </div>
+                        );
                     }
 
                     return (
@@ -426,6 +452,7 @@ export default function JudgeView() {
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];
                                     const existing = fieldVals[0];
                                     const savedText = fieldVals.find(a => a.judge_final_text != null)?.judge_final_text;
+                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
                                     const isDirty = judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined;
@@ -482,7 +509,7 @@ export default function JudgeView() {
                                                     placeholder="Valor final del juez..." value={draft}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!isDirty}
                                                     onClick={async () => {
@@ -553,9 +580,10 @@ export default function JudgeView() {
                                 {/* Judge's topic input */}
                                 {(() => {
                                     const savedTopic = fieldAnns.find(a => a.field_name === "topic" && a.judge_final_text != null)?.judge_final_text;
+                                    const savedTopicReason = fieldAnns.find(a => a.field_name === "topic" && a.judge_final_text != null)?.correction_reason ?? undefined;
                                     const jTopicKey = `${record.id}__topic`;
                                     const topicDraft = (judgeFields[jTopicKey] as string) ?? savedTopic ?? "";
-                                    const topicReason = (judgeFields[`${jTopicKey}__reason`] as string) ?? "";
+                                    const topicReason = (judgeFields[`${jTopicKey}__reason`] as string) ?? savedTopicReason ?? "";
                                     const topicIsDirty = judgeFields[jTopicKey] !== undefined || judgeFields[`${jTopicKey}__reason`] !== undefined;
                                     const existingAnn = fieldAnns.find(a => a.field_name === "topic");
                                     return (
@@ -668,7 +696,7 @@ export default function JudgeView() {
                                     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                                         <textarea rows={1} placeholder="Justificación de tu asignación..."
                                             style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
-                                            value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? ""}
+                                            value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? savedSentimentReason ?? ""}
                                             onChange={(e) => setJudgeFields((p) => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
                                         <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                             <button
@@ -708,6 +736,7 @@ export default function JudgeView() {
                                             const annotatorVals = pilarsByKey[pilarKey] ?? [];
                                             const jKey = `${record.id}__${pilarKey}`;
                                             const savedValue = annotatorVals.find(a => a.judge_final_value != null)?.judge_final_value;
+                                            const savedPilarReason = annotatorVals.find(a => a.judge_final_value != null)?.correction_reason ?? undefined;
                                             const sel = judgeFields[jKey] ?? savedValue;
                                             return (
                                                 <div key={pilarKey} style={{ marginBottom: 8, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 8 }}>
@@ -773,7 +802,7 @@ export default function JudgeView() {
                                                         <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
                                                             <textarea rows={1} placeholder="Justificación de tu asignación..."
                                                                 style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
-                                                                value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                                value={(judgeFields[`${jKey}__reason`] as string) ?? savedPilarReason ?? ""}
                                                                 onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                             <div style={{ display: "flex", justifyContent: "flex-end" }}>
                                                                 <button
@@ -810,6 +839,7 @@ export default function JudgeView() {
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];
                                     const existing = fieldVals[0];
                                     const savedText = fieldVals.find(a => a.judge_final_text != null)?.judge_final_text;
+                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
                                     const isDirty = judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined;
@@ -867,7 +897,7 @@ export default function JudgeView() {
                                                     placeholder="Valor final del juez..." value={draft}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? ""}
+                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
                                                 <button disabled={!isDirty}
                                                     onClick={async () => {
