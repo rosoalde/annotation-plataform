@@ -596,28 +596,27 @@ export default function JudgeView() {
                                                     style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Topic final..."
                                                     value={topicDraft}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [jTopicKey]: e.target.value }))} />
+                                                    onChange={e => setJudgeFields(p => ({ ...p, [jTopicKey]: e.target.value, [`${jTopicKey}__saved`]: undefined as any }))} />
                                                 <input
                                                     style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..."
                                                     value={topicReason}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jTopicKey}__reason`]: e.target.value }))} />
-                                                <button
-                                                    disabled={!topicIsDirty}
-                                                    onClick={async () => {
-                                                        try {
-                                                            if (existingAnn)
-                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existingAnn.id, finalText: topicDraft, reason: topicReason || undefined });
-                                                            else
-                                                                await judgeDecideNewMutation.mutateAsync({
-                                                                    record_id: record.id, project_id: projectId!,
-                                                                    annotation_type: "field", field_name: "topic",
-                                                                    final_text: topicDraft, reason: topicReason || undefined,
-                                                                });
-                                                            setJudgeFields(p => ({ ...p, [`${jTopicKey}__saved`]: true }));
-                                                        } catch { }
-                                                    }}
-                                                    style={{ padding: "5px 12px", borderRadius: "var(--r)", background: topicIsDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: topicIsDirty ? "pointer" : "default" }}>
+                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jTopicKey}__reason`]: e.target.value, [`${jTopicKey}__saved`]: undefined as any }))} />                                                <button
+                                                        disabled={!topicIsDirty}
+                                                        onClick={async () => {
+                                                            try {
+                                                                if (existingAnn)
+                                                                    await judgeFieldTextMutation.mutateAsync({ annotationId: existingAnn.id, finalText: topicDraft, reason: topicReason || undefined });
+                                                                else
+                                                                    await judgeDecideNewMutation.mutateAsync({
+                                                                        record_id: record.id, project_id: projectId!,
+                                                                        annotation_type: "field", field_name: "topic",
+                                                                        final_text: topicDraft, reason: topicReason || undefined,
+                                                                    });
+                                                                setJudgeFields(p => ({ ...p, [`${jTopicKey}__saved`]: true }));
+                                                            } catch { }
+                                                        }}
+                                                        style={{ padding: "5px 12px", borderRadius: "var(--r)", background: topicIsDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: topicIsDirty ? "pointer" : "default" }}>
                                                     Guardar topic →
                                                 </button>
                                             </div>
@@ -696,32 +695,35 @@ export default function JudgeView() {
                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Guardado</div>
                                 ) : null}
 
-                                {(judgeFields[`${record.id}__sentiment`] !== undefined || judgeFields[`${record.id}__sentiment_reason`] !== undefined) && !judgeFields[`${record.id}__sentiment__saved`] && (
-                                    <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
-                                        <textarea rows={1} placeholder="Justificación de tu asignación..."
-                                            style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
-                                            value={(judgeFields[`${record.id}__sentiment_reason`] as string) ?? savedSentimentReason ?? ""}
-                                            onChange={(e) => setJudgeFields((p) => ({ ...p, [`${record.id}__sentiment_reason`]: e.target.value }))} />
-                                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                            <button
-                                                onClick={async () => {
-                                                    const sentKey = `${record.id}__sentiment`;
-                                                    const finalValue = (judgeFields[sentKey] as number) ?? savedSentiment ?? record.sentiment_llm ?? 0;
-                                                    const reason = (judgeFields[`${sentKey}__reason`] as string) || undefined;
-                                                    try {
-                                                        if (sentAnns[0])
-                                                            await judgeFieldMutation.mutateAsync({ annotationId: sentAnns[0].id, finalValue, reason });
-                                                        else
-                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
-                                                        setJudgeFields(p => ({ ...p, [`${sentKey}__saved`]: true }));
-                                                    } catch { }
-                                                }}
-                                                style={{ padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
-                                                Guardar sentimiento →
-                                            </button>
+                                {(() => {
+                                    const sentKey = `${record.id}__sentiment`;
+                                    const sentIsDirty = (judgeFields[sentKey] !== undefined || judgeFields[`${sentKey}_reason`] !== undefined) && !judgeFields[`${sentKey}__saved`];
+                                    return (
+                                        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                                            <textarea rows={1} placeholder="Justificación de tu asignación..."
+                                                style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
+                                                value={(judgeFields[`${sentKey}_reason`] as string) ?? savedSentimentReason ?? ""}
+                                                onChange={(e) => setJudgeFields((p) => ({ ...p, [`${sentKey}_reason`]: e.target.value, [`${sentKey}__saved`]: undefined as any }))} />
+                                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                                <button disabled={!sentIsDirty}
+                                                    onClick={async () => {
+                                                        const finalValue = (judgeFields[sentKey] as number) ?? savedSentiment ?? record.sentiment_llm ?? 0;
+                                                        const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
+                                                        try {
+                                                            if (sentAnns[0])
+                                                                await judgeFieldMutation.mutateAsync({ annotationId: sentAnns[0].id, finalValue, reason });
+                                                            else
+                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
+                                                            setJudgeFields(p => ({ ...p, [`${sentKey}__saved`]: true }));
+                                                        } catch { }
+                                                    }}
+                                                    style={{ padding: "5px 12px", borderRadius: "var(--r)", background: sentIsDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: sentIsDirty ? "pointer" : "default" }}>
+                                                    Guardar sentimiento →
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
 
 
@@ -802,30 +804,33 @@ export default function JudgeView() {
                                                     {(savedValue !== undefined && judgeFields[jKey] === undefined) || judgeFields[`${jKey}__saved`] ? (
                                                         <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Guardado</div>
                                                     ) : null}
-                                                    {(judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`] && (
-                                                        <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
-                                                            <textarea rows={1} placeholder="Justificación de tu asignación..."
-                                                                style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
-                                                                value={(judgeFields[`${jKey}__reason`] as string) ?? savedPilarReason ?? ""}
-                                                                onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
-                                                            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                                                                <button
-                                                                    onClick={async () => {
-                                                                        const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                                                                        try {
-                                                                            if (annotatorVals[0])
-                                                                                await judgeFieldMutation.mutateAsync({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason });
-                                                                            else
-                                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
-                                                                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
-                                                                        } catch { }
-                                                                    }}
-                                                                    style={{ padding: "3px 10px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer" }}>
-                                                                    Guardar →
-                                                                </button>
+                                                    {(() => {
+                                                        const pilarIsDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
+                                                        return (
+                                                            <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
+                                                                <textarea rows={1} placeholder="Justificación de tu asignación..."
+                                                                    style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
+                                                                    value={(judgeFields[`${jKey}__reason`] as string) ?? savedPilarReason ?? ""}
+                                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value, [`${jKey}__saved`]: undefined as any }))} />
+                                                                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                                                                    <button disabled={!pilarIsDirty}
+                                                                        onClick={async () => {
+                                                                            const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
+                                                                            try {
+                                                                                if (annotatorVals[0])
+                                                                                    await judgeFieldMutation.mutateAsync({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason });
+                                                                                else
+                                                                                    await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
+                                                                                setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
+                                                                            } catch { }
+                                                                        }}
+                                                                        style={{ padding: "3px 10px", borderRadius: "var(--r)", background: pilarIsDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 10, cursor: pilarIsDirty ? "pointer" : "default" }}>
+                                                                        Guardar →
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        );
+                                                    })()}
                                                 </div>
                                             );
                                         })}
@@ -899,10 +904,10 @@ export default function JudgeView() {
                                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Valor final del juez..." value={draft}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
+                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
+                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [`${jKey}__reason`]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
                                                 <button disabled={!isDirty}
                                                     onClick={async () => {
                                                         const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
