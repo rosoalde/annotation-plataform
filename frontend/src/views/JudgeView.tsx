@@ -199,7 +199,9 @@ export default function JudgeView() {
         showToast("Todo guardado ✓");
         setJudgeFields(prev => {
             const n = { ...prev };
-            Object.keys(n).filter(k => k.startsWith(record.id)).forEach(k => delete n[k]);
+            Object.keys(n)
+                .filter(k => k.startsWith(record.id) && !k.endsWith("__saved"))
+                .forEach(k => { n[`${k}__saved`] = true; });
             return n;
         });
         collapseAndNext();
@@ -455,7 +457,7 @@ export default function JudgeView() {
                                     const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
-                                    const isDirty = judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined;
+                                    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
                                     return (
                                         <div key={fieldKey} style={{ marginBottom: 12 }}>
                                             <div style={{ fontSize: 9, fontWeight: 600, color: "var(--accent2)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{label}</div>
@@ -507,7 +509,7 @@ export default function JudgeView() {
                                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Valor final del juez..." value={draft}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value }))} />
+                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
@@ -519,7 +521,7 @@ export default function JudgeView() {
                                                                 await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
                                                             else
                                                                 await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
-                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: isDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: isDirty ? "pointer" : "default" }}>
@@ -584,7 +586,7 @@ export default function JudgeView() {
                                     const jTopicKey = `${record.id}__topic`;
                                     const topicDraft = (judgeFields[jTopicKey] as string) ?? savedTopic ?? "";
                                     const topicReason = (judgeFields[`${jTopicKey}__reason`] as string) ?? savedTopicReason ?? "";
-                                    const topicIsDirty = judgeFields[jTopicKey] !== undefined || judgeFields[`${jTopicKey}__reason`] !== undefined;
+                                    const topicIsDirty = (judgeFields[jTopicKey] !== undefined || judgeFields[`${jTopicKey}__reason`] !== undefined) && !judgeFields[`${jTopicKey}__saved`];
                                     const existingAnn = fieldAnns.find(a => a.field_name === "topic");
                                     return (
                                         <div>
@@ -612,16 +614,16 @@ export default function JudgeView() {
                                                                     annotation_type: "field", field_name: "topic",
                                                                     final_text: topicDraft, reason: topicReason || undefined,
                                                                 });
-                                                            setJudgeFields(p => { const n = { ...p }; delete n[jTopicKey]; delete n[`${jTopicKey}__reason`]; return n; });
+                                                            setJudgeFields(p => ({ ...p, [`${jTopicKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: topicIsDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: topicIsDirty ? "pointer" : "default" }}>
                                                     Guardar topic →
                                                 </button>
                                             </div>
-                                            {savedTopic != null && judgeFields[jTopicKey] === undefined && (
-                                                <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Topic guardado: {savedTopic}</div>
-                                            )}
+                                            {(savedTopic != null && judgeFields[jTopicKey] === undefined) || judgeFields[`${jTopicKey}__saved`] ? (
+                                                <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Topic guardado</div>
+                                            ) : null}
                                         </div>
                                     );
                                 })()}
@@ -688,11 +690,13 @@ export default function JudgeView() {
                                             );
                                         })}
                                 </div>
-                                {savedSentiment !== undefined && judgeFields[`${record.id}__sentiment`] === undefined && judgeFields[`${record.id}__sentiment_reason`] === undefined && (
+                                {(savedSentiment !== undefined || judgeFields[`${record.id}__sentiment__saved`]) && !judgeFields[`${record.id}__sentiment`] ? (
                                     <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada</div>
-                                )}
+                                ) : judgeFields[`${record.id}__sentiment__saved`] ? (
+                                    <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Guardado</div>
+                                ) : null}
 
-                                {(judgeFields[`${record.id}__sentiment`] !== undefined || judgeFields[`${record.id}__sentiment_reason`] !== undefined) && (
+                                {(judgeFields[`${record.id}__sentiment`] !== undefined || judgeFields[`${record.id}__sentiment_reason`] !== undefined) && !judgeFields[`${record.id}__sentiment__saved`] && (
                                     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
                                         <textarea rows={1} placeholder="Justificación de tu asignación..."
                                             style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, resize: "none" as const, fontFamily: "inherit" }}
@@ -703,13 +707,13 @@ export default function JudgeView() {
                                                 onClick={async () => {
                                                     const sentKey = `${record.id}__sentiment`;
                                                     const finalValue = (judgeFields[sentKey] as number) ?? savedSentiment ?? record.sentiment_llm ?? 0;
-                                                    const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
+                                                    const reason = (judgeFields[`${sentKey}__reason`] as string) || undefined;
                                                     try {
                                                         if (sentAnns[0])
                                                             await judgeFieldMutation.mutateAsync({ annotationId: sentAnns[0].id, finalValue, reason });
                                                         else
                                                             await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
-                                                        setJudgeFields(p => { const n = { ...p }; delete n[sentKey]; delete n[`${sentKey}_reason`]; return n; });
+                                                        setJudgeFields(p => ({ ...p, [`${sentKey}__saved`]: true }));
                                                     } catch { }
                                                 }}
                                                 style={{ padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
@@ -795,10 +799,10 @@ export default function JudgeView() {
                                                     </div>
 
                                                     <div style={{ fontSize: 9, color: "var(--amber)", marginBottom: 4 }}>⚖️ Decisión final: </div>
-                                                    {savedValue !== undefined && judgeFields[jKey] === undefined && (
-                                                        <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Decisión guardada: {savedValue === 2 ? "N/A" : savedValue}</div>
-                                                    )}
-                                                    {(judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && (
+                                                    {(savedValue !== undefined && judgeFields[jKey] === undefined) || judgeFields[`${jKey}__saved`] ? (
+                                                        <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ Guardado</div>
+                                                    ) : null}
+                                                    {(judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`] && (
                                                         <div style={{ marginTop: 6, display: "flex", flexDirection: "column" as const, gap: 4 }}>
                                                             <textarea rows={1} placeholder="Justificación de tu asignación..."
                                                                 style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "4px 7px", fontSize: 9, resize: "none" as const, fontFamily: "inherit", width: "100%" }}
@@ -813,7 +817,7 @@ export default function JudgeView() {
                                                                                 await judgeFieldMutation.mutateAsync({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason });
                                                                             else
                                                                                 await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
-                                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                                         } catch { }
                                                                     }}
                                                                     style={{ padding: "3px 10px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 10, cursor: "pointer" }}>
@@ -842,7 +846,7 @@ export default function JudgeView() {
                                     const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
-                                    const isDirty = judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined;
+                                    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
                                     return (
                                         <div key={fieldKey} style={{ marginBottom: 12 }}>
                                             <div style={{ fontSize: 9, fontWeight: 600, color: "var(--purple)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{label}</div>
@@ -907,23 +911,23 @@ export default function JudgeView() {
                                                                 await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
                                                             else
                                                                 await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
-                                                            setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                                                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
                                                     style={{ padding: "5px 12px", borderRadius: "var(--r)", background: isDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: isDirty ? "pointer" : "default" }}>
                                                     Guardar →
                                                 </button>
                                             </div>
-                                            {savedText !== undefined && judgeFields[jKey] === undefined && (
-                                                <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ guardado: {savedText}</div>
-                                            )}
+                                            {(savedText !== undefined && judgeFields[jKey] === undefined) || judgeFields[`${jKey}__saved`] ? (
+                                                <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ guardado</div>
+                                            ) : null}
                                         </div>
                                     );
                                 })}
                             </div>
                             {/* Botón Guardar todo y siguiente */}
                             {(() => {
-                                const hasPending = Object.keys(judgeFields).some(k => k.startsWith(record.id));
+                                const hasPending = Object.keys(judgeFields).some(k => k.startsWith(record.id) && !k.endsWith("__saved"));
                                 return (
                                     <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
                                         {hasPending && (
