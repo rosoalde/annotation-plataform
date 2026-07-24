@@ -400,7 +400,7 @@ export default function JudgeView() {
                     // Separar anotaciones por tipo
                     const sentAnns = annotations.filter(a => a.annotation_type === "sentiment");
                     const savedSentiment = sentAnns.find(a => a.judge_final_value != null)?.judge_final_value;
-                    const savedSentimentReason = sentAnns.find(a => a.judge_final_value != null)?.correction_reason ?? undefined;
+                    const savedSentimentReason = sentAnns.find(a => a.judge_final_value != null)?.judge_reason ?? undefined;
                     const pilarAnns = annotations.filter(a => a.annotation_type === "pilar");
                     const fieldAnns = annotations.filter(a => a.annotation_type === "field");
                     // Agrupar pilares por nombre
@@ -474,7 +474,7 @@ export default function JudgeView() {
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];
                                     const existing = fieldVals[0];
                                     const savedText = fieldVals.find(a => a.judge_final_text != null)?.judge_final_text;
-                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
+                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.judge_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
                                     const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
@@ -602,7 +602,7 @@ export default function JudgeView() {
                                 {/* Judge's topic input */}
                                 {(() => {
                                     const savedTopic = fieldAnns.find(a => a.field_name === "topic" && a.judge_final_text != null)?.judge_final_text;
-                                    const savedTopicReason = fieldAnns.find(a => a.field_name === "topic" && a.judge_final_text != null)?.correction_reason ?? undefined;
+                                    const savedTopicReason = fieldAnns.find(a => a.field_name === "topic" && a.judge_final_text != null)?.judge_reason ?? undefined;
                                     const jTopicKey = `${record.id}__topic`;
                                     const topicDraft = (judgeFields[jTopicKey] as string) ?? savedTopic ?? "";
                                     const topicReason = (judgeFields[`${jTopicKey}__reason`] as string) ?? savedTopicReason ?? "";
@@ -762,7 +762,7 @@ export default function JudgeView() {
                                             const annotatorVals = pilarsByKey[pilarKey] ?? [];
                                             const jKey = `${record.id}__${pilarKey}`;
                                             const savedValue = annotatorVals.find(a => a.judge_final_value != null)?.judge_final_value;
-                                            const savedPilarReason = annotatorVals.find(a => a.judge_final_value != null)?.correction_reason ?? undefined;
+                                            const savedPilarReason = annotatorVals.find(a => a.judge_final_value != null)?.judge_reason ?? undefined;
                                             const sel = judgeFields[jKey] ?? savedValue;
                                             return (
                                                 <div key={pilarKey} style={{ marginBottom: 8, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 8 }}>
@@ -868,7 +868,7 @@ export default function JudgeView() {
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];
                                     const existing = fieldVals[0];
                                     const savedText = fieldVals.find(a => a.judge_final_text != null)?.judge_final_text;
-                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.correction_reason ?? undefined;
+                                    const savedReason = fieldVals.find(a => a.judge_final_text != null)?.judge_reason ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
                                     const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
                                     const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];

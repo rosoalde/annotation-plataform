@@ -52,6 +52,9 @@ También funciona con cualquier otra tabla:
 \d projects
 \d records
 \d annotations
+\d keywords
+\d record_locks
+\d users
 ```
 
 ---
@@ -131,14 +134,20 @@ ORDER BY id
 LIMIT 20;
 ```
 
+Buscar un registro por record_id:
+
+```sql
+SELECT *
+FROM annotations 
+WHERE record_id = '200f5018-1eb8-45ce-9446-704166ee9fc8';
+```
+
 ---
 
 # 7. Ver todas las tablas mediante SQL
 
 ```sql
-SELECT table_name
-FROM information_schema.tables
-WHERE table_schema = 'public';
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';
 ```
 
 ---
@@ -188,6 +197,66 @@ Mostrar ayuda de `psql`:
 ```
 
 ---
+
+# 11. Eliminar datos de la base de datos
+
+Eliminar un proyecto por nombre.
+Antes de eliminar un proyecto es necesario eliminar todos los registros que dependen de él, respetando las restricciones de claves foráneas.
+
+Paso 1. Eliminar los bloqueos de los registros
+
+```sql
+DELETE FROM record_locks
+WHERE record_id IN (
+    SELECT id
+    FROM records
+    WHERE project_id = (
+        SELECT id
+        FROM projects
+        WHERE name = 'Bikesharing'
+    )
+);
+```
+
+Paso 2. Eliminar las anotaciones
+
+```sql
+DELETE FROM annotations
+WHERE project_id = (
+    SELECT id
+    FROM projects
+    WHERE name = 'Bikesharing'
+);
+```
+
+Paso 3. Eliminar las keywords
+
+```sql
+DELETE FROM keywords
+WHERE project_id = (
+    SELECT id
+    FROM projects
+    WHERE name = 'Bikesharing'
+);
+```
+
+Paso 4. Eliminar los registros
+
+```sql
+DELETE FROM records
+WHERE project_id = (
+    SELECT id
+    FROM projects
+    WHERE name = 'Bikesharing'
+);
+```
+
+Paso 5. Eliminar el proyecto
+
+```sql
+DELETE FROM projects
+WHERE name = 'Bikesharing';
+```
 
 # Flujo de inspección recomendado
 

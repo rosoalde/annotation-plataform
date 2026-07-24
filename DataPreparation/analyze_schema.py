@@ -14,6 +14,15 @@ from pathlib import Path
 from config import ANALYSIS_DB_PATH
 from utils import find_source_csvs, run_file
 
+
+EXCLUDED_PROJECTS = {
+    "bikesharing",
+    "Caminos_escolares_seguros",
+    "Control_velocidad",
+    "Plazas_accesibles_aparcamiento",
+    "regularizacion_inmigrantes",
+}
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -73,6 +82,9 @@ def main(project_filter: str = None) -> dict:
         name = project.get("project_name", "")
         if project_filter and name != project_filter:
             continue
+        if name in EXCLUDED_PROJECTS:
+                    logger.info("⏭ Proyecto excluido: %s", name)
+                    continue
         all_results[name] = run_project(project)
 
     # Resumen final

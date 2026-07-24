@@ -225,6 +225,25 @@ async def import_records_csv(
     added = 0
     skipped = 0
     errors = []
+    # ── Construir lookup de contenido de posts raíz para resolver cuerpo_padre ──
+    # Se hace antes del loop principal porque los comentarios referencian
+    # otras filas del mismo CSV (Bluesky: por uri / Reddit: por id_raiz).
+    def _sv(v: object) -> str:
+        s = str(v).strip() if v is not None else ""
+        return "" if s.lower() in ("nan", "none", "") else s
+
+    _bluesky_parent: dict[str, str] = {}  # uri → contenido
+    _reddit_parent: dict[str, str] = {}   # id_raiz → contenido
+
+    for _raw in rows:
+        _uri = _sv(_raw.get("uri", ""))
+        _cont = _sv(_raw.get("contenido", ""))
+        if _uri and _cont:
+            _bluesky_parent[_uri] = _cont
+        if _sv(_raw.get("tipo", "")).upper() == "POST":
+            _id = _sv(_raw.get("id_raiz", "")) or _sv(_raw.get("id_propio", ""))
+            if _id and _cont:
+                _reddit_parent[_id] = _cont
     CSV_COLUMN_MAP = {
         "contenido":           "content",
         "sent_subtopic":       "sentiment_llm",
@@ -263,11 +282,26 @@ async def import_records_csv(
         else None
     )
     for i, row in enumerate(rows):
-        # # 1. Renombrar columnas según el mapa
+        original_row = dict(row)  # guardar antes de remap para lookup de parent_uri / id_raiz
+
+        # 1. Renombrar columnas según el mapa
         row = {CSV_COLUMN_MAP.get(k, k): v for k, v in row.items()}
-        
+
         # 2. Convertir cadenas vacías a None
         cleaned = {k: (v if v != "" else None) for k, v in row.items()}
+
+        # 2b. Resolver cuerpo_padre para comentarios
+        if str(cleaned.get("tipo") or "").upper() == "COMENTARIO" and not cleaned.get("cuerpo_padre"):
+            # Bluesky: buscar el post raíz por parent_uri
+            _puri = str(original_row.get("parent_uri") or "").strip()
+            if _puri and _puri in _bluesky_parent:
+                cleaned["cuerpo_padre"] = _bluesky_parent[_puri]
+            # Reddit: buscar el post raíz por id_raiz
+            if not cleaned.get("cuerpo_padre"):
+                _rid = str(original_row.get("id_raiz") or "").strip()
+                if _rid and _rid in _reddit_parent:
+                    cleaned["cuerpo_padre"] = _reddit_parent[_rid]
+
         # 3. pertinente (bool/string) → pertinencia (string)
         if "pertinente" in cleaned and cleaned["pertinente"] is not None:
             v = str(cleaned.pop("pertinente")).strip().lower()

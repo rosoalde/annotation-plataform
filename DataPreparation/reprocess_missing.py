@@ -49,6 +49,15 @@ from utils import (
     safe_text,
 )
 
+
+EXCLUDED_PROJECTS = {
+    "bikesharing",
+    "Caminos_escolares_seguros",
+    "Control_velocidad",
+    "Plazas_accesibles_aparcamiento",
+    "regularizacion_inmigrantes",
+}
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -326,6 +335,9 @@ def main(project_filter: str = None, threshold: float = 1.0, fields: list = None
     for project in projects:
         name = project.get("project_name", "")
         if project_filter and name != project_filter:
+            continue
+        if name in EXCLUDED_PROJECTS:
+            logger.info("⏭ Proyecto excluido: %s", name)
             continue
         run_project(project, threshold, fields)
 

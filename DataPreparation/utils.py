@@ -20,7 +20,7 @@ from schema import ANALYZE_POST_TOOL
 
 logger = logging.getLogger(__name__)
 
-SAVE_EVERY = 10   # guardado atómico cada N filas procesadas
+SAVE_EVERY = 1   # guardado atómico cada N filas procesadas
 
 def _atomic_save(df: pd.DataFrame, out_path: Path) -> None:
     """Escribe en .tmp y luego renombra. Si el proceso se corta a mitad
@@ -362,7 +362,7 @@ def prepare_dataframe(path: Path) -> pd.DataFrame:
     with open(path, encoding="utf-8", errors="ignore") as f:
         first = f.readline()
     sep = ";" if ";" in first else ","
-    df  = pd.read_csv(path, sep=sep, encoding="utf-8", engine="python", on_bad_lines="skip")
+    df  = pd.read_csv(path, sep=sep, encoding="utf-8", engine="python", on_bad_lines="skip", dtype={c: "object" for c in DEFAULT_OUTPUT})
     if "contenido" in df.columns:
         df = df.dropna(subset=["contenido"])
         df = df[df["contenido"].astype(str).str.strip() != ""].reset_index(drop=True)
@@ -537,10 +537,14 @@ def run_file(path: Path, tema: str, desc_tema: str, subtopic_registry: "Subtopic
         return None
 
     df = ensure_output_columns(df)
+    OUTPUT_COLUMNS = list(DEFAULT_OUTPUT) + ["_processed_ok"]
+
+    df[OUTPUT_COLUMNS] = df[OUTPUT_COLUMNS].astype(object)
 
     # Filas aún no procesadas (sin marca _processed_ok="1")
-    pending_mask   = df["_processed_ok"].astype(str).str.strip() != "1"
+    pending_mask = pd.to_numeric(df["_processed_ok"], errors="coerce").fillna(0) != 1
     pending_idxs   = df[pending_mask].index.tolist()
+    logger.info("Primera fila pendiente: %s", pending_idxs[0] if pending_idxs else "ninguna")
     total_pending  = len(pending_idxs)
     logger.info("%s: %d filas pendientes de %d totales", path.name, total_pending, len(df))
 
@@ -560,9 +564,23 @@ def run_file(path: Path, tema: str, desc_tema: str, subtopic_registry: "Subtopic
                 skip += 1
                 continue
             try:
+                # print("ANTES")
                 result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
+                # print("DESPUÉS")
+                # print(df.dtypes)
+                # print(df.loc[idx])
                 for k in DEFAULT_OUTPUT:
                     v = result.get(k, DEFAULT_OUTPUT[k])
+
+                    # value = (
+                    #     json.dumps(v, ensure_ascii=False)
+                    #     if isinstance(v, (list, dict))
+                    #     else str(v)
+                    # )
+
+                    # print(k, type(value), repr(value), df[k].dtype)
+  
+
                     df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
                 df.at[idx, "_processed_ok"] = "1"
                 ok += 1
