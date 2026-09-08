@@ -15,8 +15,8 @@ const SENT_OPTS = [
 ];
 const sentLabel = (v?: number) => SENT_OPTS.find((o) => o.v === v)?.label ?? String(v ?? "—");
 const sentColor = (v?: number) => ({ 1: "#2ec27e", "-1": "#e05252", 0: "#6b7080", 2: "#30343f" }[String(v ?? 2)] ?? "#6b7080");
-const platColor = (p?: string) => ({ reddit: "#ff4500", bluesky: "#0085ff", youtube: "#ff0000", twitter: "#1da1f2" }[(p ?? "").toLowerCase()] ?? "#6b7080");
-const platIcon = (p?: string) => ({ reddit: "🔴", bluesky: "🔵", youtube: "▶", twitter: "🐦" }[(p ?? "").toLowerCase()] ?? "🌐");
+const platColor = (p?: string) => ({ reddit: "#ff4500", bluesky: "#0085ff", youtube: "#ff0000", twitter: "#1da1f2", telegram: "#008000" }[(p ?? "").toLowerCase()] ?? "#6b7080");
+const platIcon = (p?: string) => ({ reddit: "🔴", bluesky: "🔵", youtube: "▶", twitter: "🐦", telegram: "📱" }[(p ?? "").toLowerCase()] ?? "🌐");
 
 const PILARS = [
     { key: "legitimacion", label: "Legitimación", justifKey: "justif_legitimacion", color: "#7a9bf5" },

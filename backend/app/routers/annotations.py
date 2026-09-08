@@ -35,6 +35,7 @@ async def _update_record_status(db: AsyncSession, record_id: str):
         select(func.count(distinct(Annotation.annotator_id))).where(
             Annotation.record_id == record_id,
             Annotation.annotation_type.in_(["sentiment", "pilar"]),
+            Annotation.judge_final_value.is_(None),
         )
     )
     n      = r.scalar() or 0

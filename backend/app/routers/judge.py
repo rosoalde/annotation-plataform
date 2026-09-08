@@ -178,11 +178,14 @@ async def reset_judge_decisions(
     current_user: User = Depends(require_role("judge", "admin")),
 ):
     """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
-    from sqlalchemy import update as sa_update
+    from sqlalchemy import update as sa_update, or_ as sa_or
     await db.execute(
         sa_update(Annotation)
-        .where(Annotation.project_id == project_id, Annotation.judge_final_value != None)
-        .values(judge_final_value=None)
+        .where(
+            Annotation.project_id == project_id,
+            sa_or(Annotation.judge_final_value != None, Annotation.judge_final_text != None, Annotation.judge_reason != None),
+        )
+        .values(judge_final_value=None, judge_final_text=None, judge_reason=None)
     )
     await db.execute(
         sa_update(Record)

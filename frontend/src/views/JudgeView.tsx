@@ -132,24 +132,16 @@ export default function JudgeView() {
         // Sentimiento
         const sentKey = `${record.id}__sentiment`;
         if (judgeFields[sentKey] !== undefined) {
-            const existing = recAnns.filter(a => a.annotation_type === "sentiment")[0];
             const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
-            if (existing)
-                saves.push(judgeFieldMutation.mutateAsync({ annotationId: existing.id, finalValue: judgeFields[sentKey] as number, reason }));
-            else
-                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason }));
+            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason }));
         }
 
         // Topic
         const topicKey = `${record.id}__topic`;
         const topicDraft = judgeFields[topicKey] as string | undefined;
         if (topicDraft) {
-            const existing = recAnns.filter(a => a.annotation_type === "field" && a.field_name === "topic")[0];
             const reason = (judgeFields[`${topicKey}__reason`] as string) || undefined;
-            if (existing)
-                saves.push(judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: topicDraft, reason }));
-            else
-                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason }));
+            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason }));
         }
 
         // Campos de texto: pertinencia, posición, idioma y geolocalización
@@ -158,11 +150,7 @@ export default function JudgeView() {
             const draft = judgeFields[jKey] as string | undefined;
             if (draft) {
                 const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                const existing = recAnns.filter(a => a.annotation_type === "field" && a.field_name === fieldKey)[0];
-                if (existing)
-                    saves.push(judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason }));
-                else
-                    saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }));
+                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }));
             }
         }
 
@@ -172,11 +160,7 @@ export default function JudgeView() {
             const sel = judgeFields[jKey] as number | undefined;
             if (sel !== undefined) {
                 const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                const existing = recAnns.filter(a => a.annotation_type === "pilar" && a.pilar === pilarKey)[0];
-                if (existing)
-                    saves.push(judgeFieldMutation.mutateAsync({ annotationId: existing.id, finalValue: sel, reason }));
-                else
-                    saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel, reason }));
+                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel, reason }));
             }
         }
 
@@ -537,10 +521,7 @@ export default function JudgeView() {
                                                     onClick={async () => {
                                                         const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
                                                         try {
-                                                            if (existing)
-                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
-                                                            else
-                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
                                                             setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
@@ -625,14 +606,11 @@ export default function JudgeView() {
                                                         disabled={!topicIsDirty}
                                                         onClick={async () => {
                                                             try {
-                                                                if (existingAnn)
-                                                                    await judgeFieldTextMutation.mutateAsync({ annotationId: existingAnn.id, finalText: topicDraft, reason: topicReason || undefined });
-                                                                else
-                                                                    await judgeDecideNewMutation.mutateAsync({
-                                                                        record_id: record.id, project_id: projectId!,
-                                                                        annotation_type: "field", field_name: "topic",
-                                                                        final_text: topicDraft, reason: topicReason || undefined,
-                                                                    });
+                                                                await judgeDecideNewMutation.mutateAsync({
+                                                                    record_id: record.id, project_id: projectId!,
+                                                                    annotation_type: "field", field_name: "topic",
+                                                                    final_text: topicDraft, reason: topicReason || undefined,
+                                                                });
                                                                 setJudgeFields(p => ({ ...p, [`${jTopicKey}__saved`]: true }));
                                                             } catch { }
                                                         }}
@@ -672,7 +650,7 @@ export default function JudgeView() {
                                         </div>
                                     </div>
                                     {/* Cada anotador */}
-                                    {sentAnns.map(a => (
+                                    {sentAnns.filter(a => a.judge_final_value == null).map(a => (
                                         <div key={a.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 8 }}>
                                             <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 3 }}>👤 {a.annotator}{reviewBadge(a.reviewer_decision)}</div>
                                             <div style={{ fontSize: 12, fontWeight: 600, color: sentColor(a.corrected_sentiment) }}>{sentLabel(a.corrected_sentiment)}</div>
@@ -730,10 +708,7 @@ export default function JudgeView() {
                                                         const finalValue = (judgeFields[sentKey] as number) ?? savedSentiment ?? record.sentiment_llm ?? 0;
                                                         const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
                                                         try {
-                                                            if (sentAnns[0])
-                                                                await judgeFieldMutation.mutateAsync({ annotationId: sentAnns[0].id, finalValue, reason });
-                                                            else
-                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
                                                             setJudgeFields(p => ({ ...p, [`${sentKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
@@ -790,7 +765,7 @@ export default function JudgeView() {
                                                         {annotatorVals.length === 0 && (
                                                             <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Ningún anotador tocó este pilar</div>
                                                         )}
-                                                        {annotatorVals.map(a => (
+                                                        {annotatorVals.filter(a => a.judge_final_value == null).map(a => (
                                                             <div key={a.id} style={{ fontSize: 10 }}>
                                                                 <span style={{ color: "var(--muted)" }}>👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: </span>
                                                                 <strong>{a.corrected_value !== undefined ? (a.corrected_value === 2 ? "N/A" : a.corrected_value) : "—"}</strong>
@@ -837,10 +812,7 @@ export default function JudgeView() {
                                                                         onClick={async () => {
                                                                             const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
                                                                             try {
-                                                                                if (annotatorVals[0])
-                                                                                    await judgeFieldMutation.mutateAsync({ annotationId: annotatorVals[0].id, finalValue: sel as number, reason });
-                                                                                else
-                                                                                    await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
+                                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: sel as number, reason });
                                                                                 setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                                             } catch { }
                                                                         }}
@@ -899,7 +871,7 @@ export default function JudgeView() {
                                                 {fieldVals.length === 0 && (
                                                     <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic", alignSelf: "center" }}>Ningún anotador lo corrigió</div>
                                                 )}
-                                                {fieldVals.map(a => (
+                                                {fieldVals.filter(a => a.judge_final_text == null).map(a => (
                                                     <div key={a.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "6px 10px", fontSize: 10 }}>
                                                         <div style={{ color: "var(--muted)", marginBottom: 2 }}>
                                                             👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_text ?? "—"}</strong>

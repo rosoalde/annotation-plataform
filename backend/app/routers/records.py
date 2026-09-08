@@ -276,7 +276,8 @@ async def import_records_csv(
     }
     _headers = set(rows[0].keys()) if rows else set()
     _inferred_platform = (
-        "bluesky" if "uri" in _headers
+        "telegram" if "reacciones_total" in _headers
+        else "bluesky" if "uri" in _headers
         else "reddit" if "id_raiz" in _headers
         else "youtube" if "id_video" in _headers
         else None
