@@ -1,5 +1,5 @@
 """
-Define el tool schema para function calling (analyze_post).
+/home/romina/annotation-plataform/DataPreparation/schema.py - Define el tool schema para function calling (analyze_post).
 Se definen la constante ANALYZE_POST_TOOL que utils.py y call_model() usan.
 """
 

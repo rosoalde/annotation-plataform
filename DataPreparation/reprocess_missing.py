@@ -1,5 +1,5 @@
 """
-reprocess_missing.py — Reprocesado dirigido a columnas completamente vacías.
+/home/romina/annotation-plataform/DataPreparation/reprocess_missing.py — Reprocesado dirigido a columnas completamente vacías.
 
 Sigue la misma convención que analyze_schema.py: lee los proyectos desde
 analysis_db_clean.json (tema, desc_tema, output_folder, sources) y descubre

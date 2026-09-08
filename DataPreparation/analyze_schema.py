@@ -1,5 +1,5 @@
 """
-analyze_schema.py — pipeline principal de análisis LLM.
+/home/romina/annotation-plataform/DataPreparation/analyze_schema.py — pipeline principal de análisis LLM.
 
 Uso:
     python analyze_schema.py                  # todos los proyectos del JSON
@@ -16,11 +16,14 @@ from utils import find_source_csvs, run_file
 
 
 EXCLUDED_PROJECTS = {
-    "bikesharing",
-    "Caminos_escolares_seguros",
-    "Control_velocidad",
-    "Plazas_accesibles_aparcamiento",
-    "regularizacion_inmigrantes",
+    # "bikesharing",
+    # "Caminos_escolares_seguros",
+    # "Control_velocidad",
+    # "Plazas_accesibles_aparcamiento",
+    # "regularización_inmigrantes",
+    # "semáforos_accesibles",
+    # "Teletrabajo",
+    # "transporte_VLC_área_metropolitana", #<-ojo este
 }
 
 logging.basicConfig(

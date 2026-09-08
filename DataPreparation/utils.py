@@ -1,5 +1,5 @@
 """
-utils.py — helpers compartidos para el pipeline de análisis LLM.
+/home/romina/annotation-plataform/DataPreparation/utils.py — helpers compartidos para el pipeline de análisis LLM.
 """
 
 import json
@@ -8,11 +8,12 @@ import time
 import threading
 from pathlib import Path
 from typing import Optional, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 from openai import OpenAI
 
-from config import (
+from config import (MICRO_BATCH_SIZE,
     MODEL_NAME, BASE_URL, API_KEY,
     TEMPERATURE, TOP_K, MAX_TOKENS, MAX_RETRIES, OUTPUT_SUFFIX,
 )
@@ -20,7 +21,7 @@ from schema import ANALYZE_POST_TOOL
 
 logger = logging.getLogger(__name__)
 
-SAVE_EVERY = 1   # guardado atómico cada N filas procesadas
+SAVE_EVERY = MICRO_BATCH_SIZE   # guardado atómico cada N filas procesadas
 
 def _atomic_save(df: pd.DataFrame, out_path: Path) -> None:
     """Escribe en .tmp y luego renombra. Si el proceso se corta a mitad
@@ -402,7 +403,7 @@ _client: Optional[OpenAI] = None
 def get_client() -> OpenAI:
     global _client
     if _client is None:
-        _client = OpenAI(base_url=BASE_URL, api_key=API_KEY, timeout=60.0)
+        _client = OpenAI(base_url=BASE_URL, api_key=API_KEY, timeout=180.0)
     return _client
 
 
@@ -431,10 +432,10 @@ def call_model(tema: str, desc_tema: str, contenido: str, subtopic_registry: "Su
                 extra_body={"top_k": TOP_K},  # vLLM: greedy-like (top_k=1)
             )
             msg = resp.choices[0].message
-            print(resp.model_dump_json(indent=2))  # DEBUG: ver respuesta completa del modelo
-            print("========================================")
-            # print(resp.choices[0].messages.tool_calls[0].function.arguments)  # DEBUG: ver tool_calls
-            print("========================================")
+            # print(resp.model_dump_json(indent=2))  # DEBUG: ver respuesta completa del modelo
+            # print("========================================")
+            # # print(resp.choices[0].messages.tool_calls[0].function.arguments)  # DEBUG: ver tool_calls
+            # print("========================================")
             # Reasoning chain (Qwen3 / QwQ; None en Qwen2.5)
             reasoning = getattr(msg, "reasoning", None)
             if reasoning:
@@ -550,49 +551,45 @@ def run_file(path: Path, tema: str, desc_tema: str, subtopic_registry: "Subtopic
 
     ok = skip = error = 0
 
+    def _process_row(idx):
+        """Solo lectura sobre df (build_context + call_model). No escribe en
+        df — así corre en threads sin condiciones de carrera."""
+        row = df.loc[idx]
+        contenido = safe_text(row.get("contenido"))
+        if not contenido:
+            return idx, "skip", None
+        contexto = build_context(row, df, social)
+        if contexto == "BORRADO":
+            return idx, "skip", None
+        try:
+            result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
+            return idx, "ok", result
+        except Exception as exc:
+            logger.error("Error fila %d de %s: %s", idx, path.name, exc)
+            return idx, "error", None
+
     for batch_start in range(0, total_pending, SAVE_EVERY):
         batch = pending_idxs[batch_start : batch_start + SAVE_EVERY]
 
-        for idx in batch:
-            row      = df.loc[idx]
-            contenido = safe_text(row.get("contenido"))
-            if not contenido:
-                skip += 1
-                continue
-            contexto = build_context(row, df, social)
-            if contexto == "BORRADO":
-                skip += 1
-                continue
-            try:
-                # print("ANTES")
-                result = call_model(tema, desc_tema, contexto, subtopic_registry=subtopic_registry)
-                # print("DESPUÉS")
-                # print(df.dtypes)
-                # print(df.loc[idx])
-                for k in DEFAULT_OUTPUT:
-                    v = result.get(k, DEFAULT_OUTPUT[k])
-
-                    # value = (
-                    #     json.dumps(v, ensure_ascii=False)
-                    #     if isinstance(v, (list, dict))
-                    #     else str(v)
-                    # )
-
-                    # print(k, type(value), repr(value), df[k].dtype)
-  
-
-                    df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
-                df.at[idx, "_processed_ok"] = "1"
-                ok += 1
-            except Exception as exc:
-                logger.error("Error fila %d de %s: %s", idx, path.name, exc)
-                error += 1
+        with ThreadPoolExecutor(max_workers=SAVE_EVERY) as executor:
+            futures = {executor.submit(_process_row, idx): idx for idx in batch}
+            for future in as_completed(futures):
+                idx, status, result = future.result()
+                if status == "skip":
+                    skip += 1
+                elif status == "error":
+                    error += 1
+                else:  # "ok" — la escritura sobre df queda solo en el hilo principal
+                    for k in DEFAULT_OUTPUT:
+                        v = result.get(k, DEFAULT_OUTPUT[k])
+                        df.at[idx, k] = json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else str(v)
+                    df.at[idx, "_processed_ok"] = "1"
+                    ok += 1
 
         # Guardado atómico al final de cada lote
         _atomic_save(df, out_path)
         done = batch_start + len(batch)
         logger.info("  💾 %d/%d  [ok=%d skip=%d error=%d]", done, total_pending, ok, skip, error)
-
     # Validación final: *_just completos en filas pertinentes
     report = validate_completeness(df, path.name)
     if report:

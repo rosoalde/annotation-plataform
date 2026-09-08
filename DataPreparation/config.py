@@ -1,3 +1,4 @@
+# /home/romina/annotation-plataform/DataPreparation/config.py
 import os
 MODEL_NAME = "Qwen/Qwen2.5-14B-Instruct-AWQ"
 BASE_URL = "http://localhost:8001/v1"

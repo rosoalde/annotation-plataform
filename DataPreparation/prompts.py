@@ -1,5 +1,5 @@
 """
-prompts.py — Instrucciones al LLM para stance detection y clasificación de contenido social.
+/home/romina/annotation-plataform/DataPreparation/prompts.py — Instrucciones al LLM para stance detection y clasificación de contenido social.
 
 Estructura del input (generada por build_context en utils.py):
 
