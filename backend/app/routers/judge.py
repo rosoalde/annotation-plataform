@@ -158,6 +158,8 @@ async def judge_decide_new(
             ann.judge_final_text = body.final_text
         if body.reason is not None:
             ann.judge_reason = body.reason
+        if body.source is not None:
+            ann.judge_source = body.source    
     else:
         ann = Annotation(
             record_id=body.record_id, project_id=body.project_id,
@@ -165,6 +167,7 @@ async def judge_decide_new(
             pilar=body.pilar, field_name=body.field_name,
             is_correction=False, judge_reason=body.reason,
             judge_final_value=body.final_value, judge_final_text=body.final_text,
+            judge_source=body.source,
         )
         db.add(ann)
 
@@ -185,7 +188,7 @@ async def reset_judge_decisions(
             Annotation.project_id == project_id,
             sa_or(Annotation.judge_final_value != None, Annotation.judge_final_text != None, Annotation.judge_reason != None),
         )
-        .values(judge_final_value=None, judge_final_text=None, judge_reason=None)
+        .values(judge_final_value=None, judge_final_text=None, judge_reason=None, judge_source=None)
     )
     await db.execute(
         sa_update(Record)

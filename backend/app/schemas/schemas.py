@@ -312,6 +312,7 @@ class JudgeAnnotationOut(BaseModel):
     judge_final_value: Optional[int]
     judge_final_text: Optional[str] = None
     judge_reason: Optional[str] = None
+    judge_source: Optional[str] = None
     reviewer_decision: Optional[str] = None
 
 class JudgeRecordOut(BaseModel):
@@ -334,6 +335,7 @@ class JudgeDecideNewCreate(BaseModel):
     final_value: Optional[int] = None
     final_text: Optional[str] = None
     reason: Optional[str] = None
+    source: Optional[str] = None   # "llm" | id del anotador cuya asignación se adopta | "new"
 
 
 # ── Stats ──────────────────────────────────────────────────────────────────
