@@ -38,7 +38,7 @@ export default function JudgeView() {
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
     const [judgeFields, setJudgeFields] = useState<Record<string, string | number>>({});
-    // const [adoptedFrom, setAdoptedFrom] = useState<Record<string, string>>({});
+    const [adoptedFrom, setAdoptedFrom] = useState<Record<string, string>>({});
     const [editingDesc, setEditingDesc] = useState(false);
     const [descDraft, setDescDraft] = useState("");
 
@@ -133,7 +133,7 @@ export default function JudgeView() {
         const sentKey = `${record.id}__sentiment`;
         if (judgeFields[sentKey] !== undefined) {
             const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
-            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason }));
+            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason, source: adoptedFrom[sentKey] ?? "new" }));
         }
 
         // Topic
@@ -141,7 +141,7 @@ export default function JudgeView() {
         const topicDraft = judgeFields[topicKey] as string | undefined;
         if (topicDraft) {
             const reason = (judgeFields[`${topicKey}__reason`] as string) || undefined;
-            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason }));
+            saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason, source: adoptedFrom[topicKey] ?? "new" }));
         }
 
         // Campos de texto: pertinencia, posición, idioma y geolocalización
@@ -150,7 +150,7 @@ export default function JudgeView() {
             const draft = judgeFields[jKey] as string | undefined;
             if (draft) {
                 const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason }));
+                saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason, source: adoptedFrom[jKey] ?? "new" }));
             }
         }
 
@@ -473,12 +473,12 @@ export default function JudgeView() {
                                                     {llmVal && (
                                                         <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: llmVal })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
                                                                 ← valor
                                                             </button>
                                                             {llmJustif && (
                                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" }))}>
+                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
                                                                     ← justif.
                                                                 </button>
                                                             )}
@@ -497,12 +497,12 @@ export default function JudgeView() {
                                                         {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
                                                         <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" }))}>
+                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
                                                                 ← valor
                                                             </button>
                                                             {a.correction_reason && (
                                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
                                                                     ← justif.
                                                                 </button>
                                                             )}
@@ -513,7 +513,7 @@ export default function JudgeView() {
                                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Valor final del juez..." value={draft}
-                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
+                                                    onChange={e => { setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; }); setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; }); }} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
                                                     onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
@@ -521,7 +521,7 @@ export default function JudgeView() {
                                                     onClick={async () => {
                                                         const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
                                                         try {
-                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason, source: adoptedFrom[jKey] ?? "new" });
                                                             setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
@@ -547,12 +547,12 @@ export default function JudgeView() {
                                         {record.justif_topic && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{record.justif_topic}</div>}
                                         <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: record.topic_llm ?? "" }))}>
+                                                onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: record.topic_llm ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__topic`]: "llm" })); }}>
                                                 ← valor
                                             </button>
                                             {record.justif_topic && (
                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: record.justif_topic ?? "" }))}>
+                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: record.justif_topic ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__topic`]: "llm" })); }}>
                                                     ← justif.
                                                 </button>
                                             )}
@@ -567,12 +567,12 @@ export default function JudgeView() {
                                             {a.topic_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.topic_reason}</div>}
                                             <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: a.corrected_topic ?? "" }))}>
+                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__topic`]: a.corrected_topic ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__topic`]: a.annotator })); }}>
                                                     ← valor
                                                 </button>
                                                 {a.topic_reason && (
                                                     <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: a.topic_reason ?? "" }))}>
+                                                        onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__topic__reason`]: a.topic_reason ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__topic`]: a.annotator })); }}>
                                                         ← justif.
                                                     </button>
                                                 )}
@@ -597,7 +597,7 @@ export default function JudgeView() {
                                                     style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Topic final..."
                                                     value={topicDraft}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [jTopicKey]: e.target.value, [`${jTopicKey}__saved`]: undefined as any }))} />
+                                                    onChange={e => { setJudgeFields(p => ({ ...p, [jTopicKey]: e.target.value, [`${jTopicKey}__saved`]: undefined as any })); setAdoptedFrom(p => { const n = { ...p }; delete n[jTopicKey]; return n; }); }} />
                                                 <input
                                                     style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..."
@@ -610,6 +610,7 @@ export default function JudgeView() {
                                                                     record_id: record.id, project_id: projectId!,
                                                                     annotation_type: "field", field_name: "topic",
                                                                     final_text: topicDraft, reason: topicReason || undefined,
+                                                                    source: adoptedFrom[jTopicKey] ?? "new",
                                                                 });
                                                                 setJudgeFields(p => ({ ...p, [`${jTopicKey}__saved`]: true }));
                                                             } catch { }
@@ -638,12 +639,12 @@ export default function JudgeView() {
                                         {record.justif_sentimiento && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{record.justif_sentimiento}</div>}
                                         <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: record.sentiment_llm ?? 0 }))}>
+                                                onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: record.sentiment_llm ?? 0 })); setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: "llm" })); }}>
                                                 ← valor
                                             </button>
                                             {record.justif_sentimiento && (
                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: record.justif_sentimiento ?? "" }))}>
+                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: record.justif_sentimiento ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: "llm" })); }}>
                                                     ← justif.
                                                 </button>
                                             )}
@@ -658,12 +659,12 @@ export default function JudgeView() {
                                             {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
                                             <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: a.corrected_sentiment ?? record.sentiment_llm ?? 0 }))}>
+                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: a.corrected_sentiment ?? record.sentiment_llm ?? 0 })); setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: a.annotator })); }}>
                                                     ← valor
                                                 </button>
                                                 {a.correction_reason && (
                                                     <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                        onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: a.correction_reason ?? "" }))}>
+                                                        onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__sentiment_reason`]: a.correction_reason ?? "" })); setAdoptedFrom(p => ({ ...p, [`${record.id}__sentiment`]: a.annotator })); }}>
                                                         ← justif.
                                                     </button>
                                                 )}
@@ -681,7 +682,7 @@ export default function JudgeView() {
                                             return (
                                                 <button key={opt.v}
                                                     style={{ flex: 1, minWidth: 60, padding: "6px 4px", borderRadius: "var(--r)", border: `1.5px solid ${sel ? opt.color : "var(--border)"}`, fontSize: 11, fontWeight: 500, background: sel ? opt.color + "18" : "var(--card)", color: sel ? opt.color : "var(--muted)", cursor: "pointer", textAlign: "center" as const }}
-                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: opt.v }))}>
+                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${record.id}__sentiment`]: opt.v })); setAdoptedFrom(p => { const n = { ...p }; delete n[`${record.id}__sentiment`]; return n; }); }}>
                                                     {opt.icon} {opt.label}
                                                 </button>
                                             );
@@ -708,7 +709,7 @@ export default function JudgeView() {
                                                         const finalValue = (judgeFields[sentKey] as number) ?? savedSentiment ?? record.sentiment_llm ?? 0;
                                                         const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
                                                         try {
-                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason });
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason, source: adoptedFrom[sentKey] ?? "new" });
                                                             setJudgeFields(p => ({ ...p, [`${sentKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
@@ -855,12 +856,12 @@ export default function JudgeView() {
                                                     {llmVal && (
                                                         <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: llmVal }))}>
+                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: llmVal })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
                                                                 ← valor
                                                             </button>
                                                             {llmJustif && (
                                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" }))}>
+                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
                                                                     ← justif.
                                                                 </button>
                                                             )}
@@ -879,12 +880,12 @@ export default function JudgeView() {
                                                         {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
                                                         <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
                                                             <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" }))}>
+                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
                                                                 ← valor
                                                             </button>
                                                             {a.correction_reason && (
                                                                 <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" }))}>
+                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
                                                                     ← justif.
                                                                 </button>
                                                             )}
@@ -896,18 +897,18 @@ export default function JudgeView() {
                                             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
                                                     placeholder="Valor final del juez..." value={draft}
-                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
+                                                    onChange={e => { setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; }); setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; }); }} />
                                                 <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
                                                     placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
-                                                    onChange={e => setJudgeFields(p => { const n = { ...p, [`${jKey}__reason`]: e.target.value }; delete n[`${jKey}__saved`]; return n; })} />
+                                                    onChange={e => { setJudgeFields(p => { const n = { ...p, [`${jKey}__reason`]: e.target.value }; delete n[`${jKey}__saved`]; return n; }); setAdoptedFrom(p => { const n = { ...p }; delete n[`${jKey}__reason`]; return n; }); }} />
                                                 <button disabled={!isDirty}
                                                     onClick={async () => {
                                                         const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
                                                         try {
-                                                            if (existing)
-                                                                await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
-                                                            else
-                                                                await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason });
+                                                            // if (existing)
+                                                            //     await judgeFieldTextMutation.mutateAsync({ annotationId: existing.id, finalText: draft, reason });
+                                                            // else
+                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason, source: adoptedFrom[jKey] ?? "new" });
                                                             setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
                                                         } catch { }
                                                     }}
