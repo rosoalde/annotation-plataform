@@ -105,7 +105,7 @@ export default function JudgeView() {
     //     // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
     // ];
 
-    const PERTINENCIA_POSICION_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
+    const PERTINENCIA_POSTURA_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
         { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
         { key: "postura", label: "Postura", justifKey: "justif_postura" },
     ];
@@ -120,7 +120,7 @@ export default function JudgeView() {
 
     // Mismo conjunto que AnnotateView.tsx — usado por handleSaveAll para no
     // dejar afuera ningún campo de texto al guardar todo de una vez.
-    const TEXT_FIELDS = [...PERTINENCIA_POSICION_FIELDS, ...GEO_FIELDS];
+    const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
