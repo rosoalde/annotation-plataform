@@ -121,15 +121,30 @@ class Record(Base):
 
     # ── URL directa al post/comentario original ───────────────────────────────
     url_post = Column(String(500), nullable=True)  # URL directa al post en la plataforma
-
+    # ── Métricas y contenido específico de cada red social ─────────────────────
+    # Se conservan para auditoría/exportación; NO deben mostrarse en las vistas
+    # de anotador/juez ni convertirse en campos anotables.
+    likes            = Column(String(20), nullable=True)
+    reposts          = Column(String(20), nullable=True)
+    replies          = Column(String(20), nullable=True)
+    comments         = Column(String(20), nullable=True)
+    karma            = Column(String(20), nullable=True)
+    seguidores       = Column(String(20), nullable=True)
+    suscriptores     = Column(String(20), nullable=True)
+    vistas           = Column(String(20), nullable=True)
+    reacciones_total = Column(String(20), nullable=True)
+    media_path       = Column(Text, nullable=True)
+    thumbnail_path   = Column(Text, nullable=True)
+    transcripcion    = Column(Text, nullable=True)
+    relevancia_just  = Column(Text, nullable=True)
     # ── Campos de análisis LLM con justificaciones ───────────────────────────
     # Pertinencia
     pertinencia        = Column(String(20), nullable=True)   # "relevante" | "irrelevante"
     justif_pertinencia = Column(Text, nullable=True)
 
-    # Posición
-    posicion           = Column(String(20), nullable=True)   # "a_favor" | "en_contra" | "neutral" | "ambiguo"
-    justif_posicion    = Column(Text, nullable=True)
+    # Postura
+    postura            = Column(String(20), nullable=True)   # "1" | "0" | "-1" | "2"
+    justif_postura     = Column(Text, nullable=True)
 
     sentiment_llm           = Column(Integer, nullable=True)
     justif_sentimiento = Column(Text, nullable=True)
@@ -207,8 +222,8 @@ class Annotation(Base):
     corrected_value = Column(Integer, nullable=True)
 
     # Campos genéricos para anotar cualquier atributo de texto del Record
-    # que no tiene columnas dedicadas (posicion, lang, world_*)
-    field_name     = Column(String(50), nullable=True)   # "posicion" | "lang" | "world_country" | ...
+    # que no tiene columnas dedicadas (postura, lang, world_*)
+    field_name     = Column(String(50), nullable=True)   # "postura" | "lang" | "world_country" | ...
     original_text  = Column(Text, nullable=True)
     corrected_text = Column(Text, nullable=True)
 

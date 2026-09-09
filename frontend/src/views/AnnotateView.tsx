@@ -28,7 +28,7 @@ const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "
 
 // Opciones para desplegables — extraídas de los recursos de la plataforma
 const PERTINENCIA_OPTS = ["relevante", "irrelevante"];
-const POSICION_OPTS = [
+const POSTURA_OPTS = [
     { v: "1", label: "1 — A favor / Pro" },
     { v: "0", label: "0 — Neutro / Mixto" },
     { v: "-1", label: "-1 — En contra / Anti" },
@@ -41,9 +41,9 @@ const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
 
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.
-const PERTINENCIA_POSICION_FIELDS: Array<{ key: string; label: string; justifKey: string | null; color: string }> = [
+const PERTINENCIA_POSTURA_FIELDS: Array<{ key: string; label: string; justifKey: string | null; color: string }> = [
     { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia", color: "#e8962a" },
-    { key: "posicion", label: "Posición", justifKey: "justif_posicion", color: "#7a9bf5" },
+    { key: "postura", label: "Postura", justifKey: "justif_postura", color: "#7a9bf5" },
 ];
 
 const GEO_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
@@ -55,7 +55,7 @@ const GEO_FIELDS: Array<{ key: string; label: string; justifKey: string | null }
     // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
 ];
 
-const TEXT_FIELDS = [...PERTINENCIA_POSICION_FIELDS, ...GEO_FIELDS];
+const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
 
 type FieldState = { value?: string; reason?: string };
 type RecordAnn = {
@@ -319,10 +319,10 @@ export default function AnnotateView() {
 
                             {unlocked && (
                                 <>
-                                    {/* ── 1. PERTINENCIA Y POSICIÓN ─────────────────────────────── */}
-                                    <div style={{ ...S.sectionLabel, marginTop: 12 }}>Pertinencia y posición</div>
+                                    {/* ── 1. PERTINENCIA Y POSTURA ─────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 12 }}>Pertinencia y postura</div>
                                     <div style={S.fieldGrid}>
-                                        {PERTINENCIA_POSICION_FIELDS.map((f) => {
+                                        {PERTINENCIA_POSTURA_FIELDS.map((f) => {
                                             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
                                             const fa = ann.fields[f.key] ?? {};
                                             const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
@@ -342,7 +342,7 @@ export default function AnnotateView() {
                                                         <select style={{ ...S.input, marginTop: 6 }} value={current}
                                                             onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
                                                             <option value="">— elige —</option>
-                                                            {POSICION_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+                                                            {POSTURA_OPTS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
                                                         </select>
                                                     )}
                                                     {llmVal && fa.value === undefined && !confirmedFields[rec.id]?.has(f.key) && (

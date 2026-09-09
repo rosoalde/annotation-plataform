@@ -97,8 +97,8 @@ export interface Record {
     url_post?: string;
     pertinencia?: string;
     justif_pertinencia?: string;
-    posicion?: string;
-    justif_posicion?: string;
+    postura?: string;
+    justif_postura?: string;
     justif_topic?: string;
     justif_sentimiento?: string;
     justif_legitimacion?: string;

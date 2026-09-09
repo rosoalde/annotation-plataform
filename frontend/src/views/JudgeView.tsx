@@ -107,7 +107,7 @@ export default function JudgeView() {
 
     const PERTINENCIA_POSICION_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
         { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
-        { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
+        { key: "postura", label: "Postura", justifKey: "justif_postura" },
     ];
 
     const GEO_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
@@ -446,13 +446,13 @@ export default function JudgeView() {
                                 {record.lang && <span>🌐 Idioma LLM: <strong style={{ color: "var(--text)" }}>{record.lang}</strong>{record.justif_lang && <em> — {record.justif_lang}</em>}</span>}
                                 {record.world_country && <span>🌍 País LLM: <strong style={{ color: "var(--text)" }}>{[record.world_city, record.world_region, record.world_country].filter(Boolean).join(", ")}</strong>{record.justif_pais && <em> — {record.justif_pais}</em>}</span>}
                                 {record.pertinencia && <span>📌 Pertinencia LLM: <strong style={{ color: "var(--text)" }}>{record.pertinencia}</strong>{record.justif_pertinencia && <em> — {record.justif_pertinencia}</em>}</span>}
-                                {record.posicion && <span>🎯 Posición LLM: <strong style={{ color: "var(--text)" }}>{record.posicion}</strong>{record.justif_posicion && <em> — {record.justif_posicion}</em>}</span>}
+                                {record.postura && <span>🎯 Postura LLM: <strong style={{ color: "var(--text)" }}>{record.postura}</strong>{record.justif_postura && <em> — {record.justif_postura}</em>}</span>}
                             </div>
 
-                            {/* ── PERTINENCIA Y POSICIÓN ── */}
+                            {/* ── PERTINENCIA Y POSTURA ── */}
                             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginBottom: 10 }}>
-                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--amber)", marginBottom: 6 }}>PERTINENCIA Y POSICIÓN</div>
-                                {PERTINENCIA_POSICION_FIELDS.map(({ key: fieldKey, label, justifKey }) => {
+                                <div style={{ fontSize: 10, fontWeight: 600, color: "var(--amber)", marginBottom: 6 }}>PERTINENCIA Y POSTURA</div>
+                                {PERTINENCIA_POSTURA_FIELDS.map(({ key: fieldKey, label, justifKey }) => {
                                     const llmVal = (record as any)[fieldKey] as string | undefined;
                                     const llmJustif = justifKey ? (record as any)[justifKey] as string | undefined : undefined;
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];

@@ -116,8 +116,8 @@ class RecordOut(BaseModel):
     url_post: Optional[str] = None
     pertinencia: Optional[str] = None
     justif_pertinencia: Optional[str] = None
-    posicion: Optional[str] = None
-    justif_posicion: Optional[str] = None
+    postura: Optional[str] = None
+    justif_postura: Optional[str] = None
     justif_topic: Optional[str] = None
     justif_sentimiento: Optional[str] = None
     justif_legitimacion: Optional[str] = None
@@ -176,10 +176,24 @@ class RecordImportItem(BaseModel):
     world_region: Optional[str] = None
     world_city: Optional[str] = None
     url_post: Optional[str] = None
+    # Métricas y contenido específico de cada red (se preservan, no se anotan)
+    likes: Optional[str] = None
+    reposts: Optional[str] = None
+    replies: Optional[str] = None
+    comments: Optional[str] = None
+    karma: Optional[str] = None
+    seguidores: Optional[str] = None
+    suscriptores: Optional[str] = None
+    vistas: Optional[str] = None
+    reacciones_total: Optional[str] = None
+    media_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
+    transcripcion: Optional[str] = None
+    relevancia_just: Optional[str] = None
     pertinencia: Optional[str] = None
     justif_pertinencia: Optional[str] = None
-    posicion: Optional[str] = None
-    justif_posicion: Optional[str] = None
+    postura: Optional[str] = None
+    justif_postura: Optional[str] = None
     justif_topic: Optional[str] = None
     justif_sentimiento: Optional[str] = None
     justif_legitimacion: Optional[str] = None
@@ -245,7 +259,7 @@ class AnnotationResponse(BaseModel):
 class FieldAnnotationCreate(BaseModel):
     record_id: str
     project_id: str
-    field_name: str          # "posicion" | "lang" | "world_continent" | "world_country" | "world_region" | "world_city"
+    field_name: str          # "postura" | "lang" | "world_continent" | "world_country" | "world_region" | "world_city"
     original_text: Optional[str] = None
     corrected_text: Optional[str] = None
     is_correction: bool
