@@ -51,6 +51,7 @@ async def judge_records(
                 pilar=a.pilar, field_name=a.field_name, corrected_text=a.corrected_text,
                 is_correction=a.is_correction, judge_final_value=a.judge_final_value,
                 judge_final_text=a.judge_final_text, judge_reason=a.judge_reason,
+                judge_source=a.judge_source,
                 reviewer_decision=a.reviewer_decision,
             )
             for a in anns
@@ -314,6 +315,7 @@ async def export_judged(
             )
             sent_final       = judge_sent_ann.judge_final_value if judge_sent_ann else rec.sentiment_llm
             sent_judge_reason = judge_sent_ann.judge_reason if judge_sent_ann else None
+            sent_judge_source = judge_sent_ann.judge_source if judge_sent_ann else None
 
             # ── Topic (stored as field annotation with field_name="topic") ─
             judge_topic_ann = next(
@@ -321,6 +323,7 @@ async def export_judged(
             )
             topic_final       = judge_topic_ann.judge_final_text if judge_topic_ann else rec.topic_llm
             topic_judge_reason = judge_topic_ann.judge_reason if judge_topic_ann else None
+            topic_judge_source = judge_topic_ann.judge_source if judge_topic_ann else None
 
             # ── Pilars ────────────────────────────────────────────────────
             PILAR_KEYS = [
@@ -335,6 +338,7 @@ async def export_judged(
             }
             pilar_final   = {}
             pilar_reasons = {}
+            pilar_sources = {}
             for key in PILAR_KEYS:
                 judge_a = next(
                     (a for a in pilar_anns if a.pilar == key and a.judge_final_value is not None), None
@@ -342,9 +346,11 @@ async def export_judged(
                 if judge_a:
                     pilar_final[key]   = judge_a.judge_final_value
                     pilar_reasons[key] = judge_a.judge_reason
+                    pilar_sources[key] = judge_a.judge_source
                 else:
                     pilar_final[key]   = pilar_llm_map[key]   # LLM fallback
                     pilar_reasons[key] = None
+                    pilar_sources[key] = None
 
             # ── Text fields ────────────────────────────────────────────────
             TEXT_FIELD_KEYS = [
@@ -364,6 +370,7 @@ async def export_judged(
             }
             field_final   = {}
             field_reasons = {}
+            field_sources = {}
             for key in TEXT_FIELD_KEYS:
                 judge_a = next(
                     (a for a in field_anns
@@ -372,9 +379,11 @@ async def export_judged(
                 if judge_a:
                     field_final[key]   = judge_a.judge_final_text
                     field_reasons[key] = judge_a.judge_reason
+                    field_sources[key] = judge_a.judge_source
                 else:
                     field_final[key]   = llm_field_map[key]   # LLM fallback
                     field_reasons[key] = None
+                    field_sources[key] = None
 
             # ── Judge username ─────────────────────────────────────────────
             judge_user = None
@@ -445,6 +454,20 @@ async def export_judged(
                 "judge_efectividad_reason":      pilar_reasons["efectividad"],
                 "judge_justicia_equidad_reason": pilar_reasons["justicia_equidad"],
                 "judge_confianza_inst_reason":   pilar_reasons["confianza_institucional"],
+                # ── Judge source: "llm" | username del anotador adoptado | "new" ──
+                "judge_sentiment_source":        sent_judge_source,
+                "judge_topic_source":            topic_judge_source,
+                "judge_pertinencia_source":      field_sources["pertinencia"],
+                "judge_posicion_source":         field_sources["posicion"],
+                "judge_lang_source":             field_sources["lang"],
+                "judge_world_continent_source":  field_sources["world_continent"],
+                "judge_world_country_source":    field_sources["world_country"],
+                "judge_world_region_source":     field_sources["world_region"],
+                "judge_world_city_source":       field_sources["world_city"],
+                "judge_legitimacion_source":     pilar_sources["legitimacion"],
+                "judge_efectividad_source":      pilar_sources["efectividad"],
+                "judge_justicia_equidad_source": pilar_sources["justicia_equidad"],
+                "judge_confianza_inst_source":   pilar_sources["confianza_institucional"],
                 # ── Audit ──────────────────────────────────────────────────
                 "judge_made_correction": judge_made_correction,
                 "judge_username":        judge_user,
