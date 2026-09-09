@@ -74,6 +74,8 @@ export interface Record {
     tipo?: string;
     fecha?: string;
     fuente?: string;
+    usuario?: string;
+    id_anonimo?: string;
     titulo_padre?: string;
     cuerpo_padre?: string;
     descripcion_padre?: string;

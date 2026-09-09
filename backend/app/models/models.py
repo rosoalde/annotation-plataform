@@ -103,6 +103,8 @@ class Record(Base):
     tipo                    = Column(String(50), nullable=True)
     fecha                   = Column(String(30), nullable=True)
     fuente                  = Column(String(200), nullable=True)
+    usuario                 = Column(String(200), nullable=True)   # nombre de usuario real del autor
+    id_anonimo              = Column(String(100), nullable=True)   # id anonimizado del autor (generado aguas arriba)
     titulo_padre            = Column(Text, nullable=True)
     cuerpo_padre            = Column(Text, nullable=True)
     descripcion_padre       = Column(Text, nullable=True)

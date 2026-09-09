@@ -100,6 +100,8 @@ class RecordOut(BaseModel):
     tipo: Optional[str]
     fecha: Optional[str]
     fuente: Optional[str]
+    usuario: Optional[str] = None
+    id_anonimo: Optional[str] = None
     titulo_padre: Optional[str]
     cuerpo_padre: Optional[str]
     descripcion_padre: Optional[str]
@@ -158,6 +160,8 @@ class RecordImportItem(BaseModel):
     tipo: Optional[str] = None
     fecha: Optional[str] = None
     fuente: Optional[str] = None
+    usuario: Optional[str] = None
+    id_anonimo: Optional[str] = None
     titulo_padre: Optional[str] = None
     cuerpo_padre: Optional[str] = None
     descripcion_padre: Optional[str] = None

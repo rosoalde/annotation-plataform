@@ -364,6 +364,8 @@ async def import_records_csv(
             tipo=item.tipo,
             fecha=item.fecha,
             fuente=item.fuente,
+            usuario=item.usuario,
+            id_anonimo=item.id_anonimo,
             titulo_padre=item.titulo_padre,
             cuerpo_padre=item.cuerpo_padre,
             descripcion_padre=item.descripcion_padre,
