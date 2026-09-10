@@ -209,6 +209,43 @@ export default function AnnotateView() {
             s.delete(key);
             return { ...prev, [recId]: s };
         });
+
+        // NUEVO: Pre-completar el formulario con el último valor guardado
+        const rec = (data?.records ?? []).find((r) => r.id === recId);
+        if (!rec) return;
+
+        // Determinar si es un campo de texto, pilar o sentimiento/topic
+        const textField = TEXT_FIELDS.find((f) => f.key === key);
+
+        if (textField) {
+            // Campos de texto: leer de rec.annotator_${key} si existe
+            const lastValue = (rec as any)[`annotator_${key}`] as string | undefined;
+            const lastReason = (rec as any)[`annotator_${key}_reason`] as string | undefined;
+            if (lastValue || lastReason) {
+                setField(recId, key, { value: lastValue ?? "", reason: lastReason ?? "" });
+            }
+        } else if (key === "topic") {
+            // Topic: leer de rec.annotator_topic
+            const lastValue = rec.annotator_topic ?? "";
+            const lastReason = rec.annotator_topic_reason ?? "";
+            if (lastValue || lastReason) {
+                setAnn(recId, { topic: lastValue, topic_reason: lastReason });
+            }
+        } else if (key === "sentiment") {
+            // Sentiment: leer de rec.annotator_sentiment
+            const lastValue = rec.annotator_sentiment;
+            const lastReason = rec.annotator_sentiment_reason ?? "";
+            if (lastValue !== undefined || lastReason) {
+                setAnn(recId, { sentiment: lastValue ?? 2, sentiment_reason: lastReason });
+            }
+        } else {
+            // Pilares: leer de rec.annotator_${key}
+            const lastValue = (rec as any)[`annotator_${key}`] as number | undefined;
+            const lastReason = (rec as any)[`annotator_${key}_reason`] as string | undefined;
+            if (lastValue !== undefined || lastReason) {
+                setPilar(recId, key, { value: lastValue, reason: lastReason ?? "" });
+            }
+        }
     };
     // Permite deshacer una decisión (CONFIRMO o NO CONFIRMO) y volver a ver
     // los dos botones, por si el anotador se ha equivocado al pulsar.
@@ -696,7 +733,7 @@ export default function AnnotateView() {
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                                 <div>
                                                                     ✓ CONFIRMADO — valor:{" "}
-                                                                    {(rec as any)[`annotator_${f.key}`] ?? "(sin valor)"}
+                                                                    {(rec as any)[`annotator_${f.key}`] ?? ((rec as any)[f.key] ?? "(sin valor)")}
                                                                 </div>
 
                                                                 <button
@@ -784,7 +821,7 @@ export default function AnnotateView() {
                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                     <div>
                                                         ✓ CONFIRMADO — valor: {
-                                                            rec.annotator_topic ?? "(sin valor)"
+                                                            rec.annotator_topic ?? rec.topic_llm ?? "(sin valor)"
                                                         }
                                                     </div>
                                                     <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
@@ -827,8 +864,8 @@ export default function AnnotateView() {
                                                     <div>
                                                         ✓ CONFIRMADO — valor: {
                                                             rec.annotator_sentiment !== undefined
-                                                                ? sentLabel(rec.annotator_sentiment)
-                                                                : "(sin valor)"
+                                                                ? sentLabel(rec.annotator_sentiment ?? rec.sentiment_llm)
+                                                                : sentLabel(rec.sentiment_llm)
                                                         }
                                                         <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
                                                             ↶ Deshacer
@@ -902,7 +939,7 @@ export default function AnnotateView() {
                                                                 <div>
                                                                     ✓ CONFIRMADO — valor: {
                                                                         pilarLabel(
-                                                                            (rec as any)[`annotator_${p.key}`]
+                                                                            (rec as any)[`annotator_${p.key}`] ?? (rec as any)[p.key] ?? 2
                                                                         )
                                                                     }
                                                                     <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
@@ -980,7 +1017,7 @@ export default function AnnotateView() {
                                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                                                 <div>
                                                                     ✓ CONFIRMADO — valor: {
-                                                                        (rec as any)[`annotator_${f.key}`] ?? "(sin valor)"
+                                                                        (rec as any)[`annotator_${f.key}`] ?? ((rec as any)[f.key] ?? "(sin valor)")
                                                                     }
                                                                     <button style={S.undoBtn} onClick={() => backToGate(rec.id, f.key)}>
                                                                         ↶ Deshacer
