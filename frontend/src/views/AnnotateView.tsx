@@ -569,13 +569,15 @@ export default function AnnotateView() {
         const pending: string[] = [];
         for (const f of TEXT_FIELDS) {
             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
-            if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key)) pending.push(f.label);
+            const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
+            if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
         }
         if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic")) pending.push("Tema / topic");
         if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment")) pending.push("Sentimiento (topic)");
         for (const p of PILARS) {
             const llmVal = (rec as any)[p.key] as number | undefined;
-            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key)) pending.push(p.label);
+            const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
+            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal === undefined) pending.push(p.label);
         }
         if (pending.length > 0) {
             const ok = window.confirm(
@@ -730,28 +732,52 @@ export default function AnnotateView() {
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
                                                     {isConfirmed ? (
                                                         <div style={S.confirmedTag}>
-                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                                                <div>
-                                                                    ✓ CONFIRMADO — valor:{" "}
-                                                                    {(rec as any)[`annotator_${f.key}`] ?? ((rec as any)[f.key] ?? "(sin valor)")}
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div>
+                                                                        ✓ CONFIRMADO — valor:{" "}
+                                                                        {(rec as any)[`annotator_${f.key}`] ?? ((rec as any)[f.key] ?? "(sin valor)")}
+                                                                    </div>
+                                                                    {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                            Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-
                                                                 <button
                                                                     style={S.undoBtn}
                                                                     onClick={() => backToGate(rec.id, f.key)}
                                                                 >
                                                                     ↶ Deshacer
                                                                 </button>
-
-                                                                {(rec as any)[`annotator_${f.key}_reason`] && (
-                                                                    <div style={{ marginTop: 4 }}>
-                                                                        Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         </div>
                                                     ) : isRejecting ? (
                                                         <div style={{ marginTop: 8 }}>
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: 11, color: "#e05252", fontWeight: 600 }}>
+                                                                        ✕ NO CONFIRMADO
+                                                                    </div>
+                                                                    {fa.value && (
+                                                                        <div style={{ marginTop: 4, fontSize: 10 }}>
+                                                                            Nuevo valor: <strong>{fa.value}</strong>
+                                                                        </div>
+                                                                    )}
+                                                                    {fa.reason && (
+                                                                        <div style={{ marginTop: 2, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                            Nueva justificación: "{fa.reason}"
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    style={S.undoBtn}
+                                                                    onClick={() => backToGate(rec.id, f.key)}
+                                                                >
+                                                                    ↶ Deshacer
+                                                                </button>
+                                                            </div>
+
                                                             <div style={S.formLabel}>Nuevo valor:</div>
 
                                                             <select
