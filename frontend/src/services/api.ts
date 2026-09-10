@@ -82,7 +82,7 @@ export const projectsApi = {
 
 // ── Records ───────────────────────────────────────────────────────────────
 export const recordsApi = {
-    list: (projectId: string, params?: { platform?: string; annotation_type?: string; limit?: number; offset?: number }) =>
+    list: (projectId: string, params?: { platform?: string; annotation_type?: string; limit?: number; offset?: number; include_record_id?: string; }) =>
         http.get<RecordListResponse>(`/projects/${projectId}/records`, { params }).then((r) => r.data),
 
     acquireLock: (projectId: string, recordId: string) =>

@@ -43,6 +43,7 @@ async def list_records(
     annotation_type: Optional[str] = None,
     limit: int                     = 20,
     offset: int                    = 0,
+    include_record_id: Optional[str] = None,
     db: AsyncSession                = Depends(get_db),
     current_user: User              = Depends(get_current_user),
 ):
@@ -71,8 +72,25 @@ async def list_records(
     # page_q  = q.order_by(Record.created_at).offset(offset).limit(limit)
     # DESPUÉS
     page_q = q
+    # En la cola normal de anotación se ocultan los registros
+    # que el usuario ya ha anotado.
+    #
+    # Excepción: después de guardar un registro concreto, el frontend
+    # puede solicitarlo explícitamente mediante include_record_id para
+    # volver a consultar ese mismo Record y mostrar los datos persistidos
+    # del anotador.
     if annotation_type and done_ids:
-        page_q = page_q.where(Record.id.notin_(done_ids))   # ← oculta lo que YA anotaste
+        if include_record_id:
+            page_q = page_q.where(
+                (Record.id.notin_(done_ids)) |
+                (Record.id == include_record_id)
+            )
+        else:
+            page_q = page_q.where(Record.id.notin_(done_ids))
+
+    if include_record_id:
+        page_q = page_q.where(Record.id == include_record_id)
+
     page_q = page_q.order_by(Record.created_at).offset(offset).limit(limit)
     result  = await db.execute(page_q)
     records = result.scalars().all()
@@ -88,7 +106,84 @@ async def list_records(
         if lock and lock.expires_at > now:
             locked_by_other = lock.user_id != current_user.id
             locked_until    = lock.expires_at
+        # ── Anotación persistida del usuario actual ────────────────────────
+        ann_r = await db.execute(
+            select(Annotation).where(
+                Annotation.record_id == rec.id,
+                Annotation.project_id == project_id,
+                Annotation.annotator_id == current_user.id,
+            )
+        )
+        user_annotations = ann_r.scalars().all()
 
+        annotator = {
+            "pertinencia": None,
+            "pertinencia_reason": None,
+            "postura": None,
+            "postura_reason": None,
+            "topic": None,
+            "topic_reason": None,
+            "sentiment": None,
+            "sentiment_reason": None,
+            "lang": None,
+            "lang_reason": None,
+            "world_continent": None,
+            "world_continent_reason": None,
+            "world_country": None,
+            "world_country_reason": None,
+            "world_region": None,
+            "world_region_reason": None,
+            "world_city": None,
+            "world_city_reason": None,
+            "legitimacion": None,
+            "legitimacion_reason": None,
+            "efectividad": None,
+            "efectividad_reason": None,
+            "justicia_equidad": None,
+            "justicia_equidad_reason": None,
+            "confianza_institucional": None,
+            "confianza_institucional_reason": None,
+        }
+
+        for a in user_annotations:
+            if a.annotation_type == "sentiment":
+                if a.corrected_sentiment is not None:
+                    annotator["sentiment"] = a.corrected_sentiment
+                if a.correction_reason:
+                    annotator["sentiment_reason"] = a.correction_reason
+
+                if a.corrected_topic is not None:
+                    annotator["topic"] = a.corrected_topic
+                if a.topic_reason:
+                    annotator["topic_reason"] = a.topic_reason
+
+            elif a.annotation_type == "pilar":
+                if a.pilar in {
+                    "legitimacion",
+                    "efectividad",
+                    "justicia_equidad",
+                    "confianza_institucional",
+                }:
+                    annotator[a.pilar] = a.corrected_value
+                    annotator[f"{a.pilar}_reason"] = a.correction_reason
+
+            elif a.annotation_type == "keyword":
+                field = a.field_name
+
+                field_map = {
+                    "pertinencia": "pertinencia",
+                    "postura": "postura",
+                    "lang": "lang",
+                    "world_continent": "world_continent",
+                    "world_country": "world_country",
+                    "world_region": "world_region",
+                    "world_city": "world_city",
+                }
+
+                if field in field_map:
+                    target = field_map[field]
+                    annotator[target] = a.corrected_text
+                    annotator[f"{target}_reason"] = a.correction_reason
         out.append(RecordOut(
             id=rec.id, external_id=rec.external_id, content=rec.content,
             platform=rec.platform, tipo=rec.tipo, fecha=rec.fecha,
@@ -119,6 +214,33 @@ async def list_records(
             legitimacion=rec.legitimacion, efectividad=rec.efectividad,
             justicia_equidad=rec.justicia_equidad,
             confianza_institucional=rec.confianza_institucional,
+            # ── Datos persistidos del ANOTADOR ─────────────────────────────
+            annotator_pertinencia=annotator["pertinencia"],
+            annotator_pertinencia_reason=annotator["pertinencia_reason"],
+            annotator_postura=annotator["postura"],
+            annotator_postura_reason=annotator["postura_reason"],
+            annotator_topic=annotator["topic"],
+            annotator_topic_reason=annotator["topic_reason"],
+            annotator_sentiment=annotator["sentiment"],
+            annotator_sentiment_reason=annotator["sentiment_reason"],
+            annotator_lang=annotator["lang"],
+            annotator_lang_reason=annotator["lang_reason"],
+            annotator_world_continent=annotator["world_continent"],
+            annotator_world_continent_reason=annotator["world_continent_reason"],
+            annotator_world_country=annotator["world_country"],
+            annotator_world_country_reason=annotator["world_country_reason"],
+            annotator_world_region=annotator["world_region"],
+            annotator_world_region_reason=annotator["world_region_reason"],
+            annotator_world_city=annotator["world_city"],
+            annotator_world_city_reason=annotator["world_city_reason"],
+            annotator_legitimacion=annotator["legitimacion"],
+            annotator_legitimacion_reason=annotator["legitimacion_reason"],
+            annotator_efectividad=annotator["efectividad"],
+            annotator_efectividad_reason=annotator["efectividad_reason"],
+            annotator_justicia_equidad=annotator["justicia_equidad"],
+            annotator_justicia_equidad_reason=annotator["justicia_equidad_reason"],
+            annotator_confianza_institucional=annotator["confianza_institucional"],
+            annotator_confianza_institucional_reason=annotator["confianza_institucional_reason"],
             status=rec.status, locked_by_other=locked_by_other, locked_until=locked_until,
         ))
 

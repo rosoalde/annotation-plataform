@@ -136,6 +136,37 @@ class RecordOut(BaseModel):
     efectividad: Optional[int]
     justicia_equidad: Optional[int]
     confianza_institucional: Optional[int]
+    # ── Datos de la anotación del usuario actual ───────────────────────────
+    # Estos campos NO sustituyen a los valores del LLM.
+    # Permiten que, después de guardar, el frontend vuelva a consultar
+    # el Record y muestre los datos persistidos del ANOTADOR.
+    annotator_pertinencia: Optional[str] = None
+    annotator_pertinencia_reason: Optional[str] = None
+    annotator_postura: Optional[str] = None
+    annotator_postura_reason: Optional[str] = None
+    annotator_topic: Optional[str] = None
+    annotator_topic_reason: Optional[str] = None
+    annotator_sentiment: Optional[int] = None
+    annotator_sentiment_reason: Optional[str] = None
+    annotator_lang: Optional[str] = None
+    annotator_lang_reason: Optional[str] = None
+    annotator_world_continent: Optional[str] = None
+    annotator_world_continent_reason: Optional[str] = None
+    annotator_world_country: Optional[str] = None
+    annotator_world_country_reason: Optional[str] = None
+    annotator_world_region: Optional[str] = None
+    annotator_world_region_reason: Optional[str] = None
+    annotator_world_city: Optional[str] = None
+    annotator_world_city_reason: Optional[str] = None
+    annotator_legitimacion: Optional[int] = None
+    annotator_legitimacion_reason: Optional[str] = None
+    annotator_efectividad: Optional[int] = None
+    annotator_efectividad_reason: Optional[str] = None
+    annotator_justicia_equidad: Optional[int] = None
+    annotator_justicia_equidad_reason: Optional[str] = None
+    annotator_confianza_institucional: Optional[int] = None
+    annotator_confianza_institucional_reason: Optional[str] = None
+
     status: str
     locked_by_other: bool = False
     locked_until: Optional[datetime] = None
