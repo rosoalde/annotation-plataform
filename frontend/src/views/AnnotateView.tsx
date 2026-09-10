@@ -283,14 +283,17 @@ export default function AnnotateView() {
 
     const saveMutation = useMutation({
         mutationFn: async ({ rec, ann }: { rec: AnnotRecord; ann: RecordAnn }) => {
+            const confirmed = confirmedFields[rec.id] ?? new Set<string>();
+            const rejected = rejecting[rec.id] ?? new Set<string>();
             const correctedSentiment = ann.sentiment ?? rec.sentiment_llm ?? 2;
             const correctedTopic = ann.topic ?? rec.topic_llm ?? undefined;
 
             const calls: Promise<unknown>[] = [
                 annotationsApi.saveSentiment(projectId!, {
                     record_id: rec.id, project_id: projectId!,
-                    original_sentiment: rec.sentiment_llm ?? 2, corrected_sentiment: correctedSentiment,
-                    is_correction: correctedSentiment !== rec.sentiment_llm,
+                    original_sentiment: rec.sentiment_llm ?? 2,
+                    corrected_sentiment: correctedSentiment,
+                    is_correction: confirmed.has("sentiment") ? false : rejected.has("sentiment") ? true : false,
                     correction_reason: ann.sentiment_reason ?? undefined,
                     original_topic: rec.topic_llm ?? undefined, corrected_topic: correctedTopic,
                     topic_reason: ann.topic_reason ?? undefined,
@@ -305,7 +308,8 @@ export default function AnnotateView() {
                 calls.push(annotationsApi.savePilar(projectId!, {
                     record_id: rec.id, project_id: projectId!, pilar: p.key,
                     original_value: llmVal ?? 2, corrected_value: valueToSave,
-                    is_correction: valueToSave !== llmVal, correction_reason: pa.reason ?? undefined,
+                    is_correction: confirmed.has(p.key) ? false : rejected.has(p.key) ? true : false,
+                    correction_reason: pa.reason ?? undefined,
                 }));
             }
 
@@ -317,7 +321,7 @@ export default function AnnotateView() {
                 calls.push(annotationsApi.saveField(projectId!, {
                     record_id: rec.id, project_id: projectId!, field_name: f.key,
                     original_text: llmVal, corrected_text: valueToSave,
-                    is_correction: valueToSave !== llmVal, correction_reason: fa.reason ?? undefined,
+                    is_correction: confirmed.has(f.key) ? false : rejected.has(f.key) ? true : false, correction_reason: fa.reason ?? undefined,
                 }));
             }
 
@@ -369,6 +373,8 @@ export default function AnnotateView() {
                 const llmVal = ((rec as any)[key] as string | undefined) ?? "";
                 const value = fa?.value ?? "";
                 const reason = fa?.reason ?? "";
+                const rejected = rejecting[rec.id] ?? new Set<string>();
+                const isCorrection = rejected.has(key);
 
                 if (!value) {
                     showToast(`Falta el valor de ${textField.label}`, "warn");
@@ -402,13 +408,15 @@ export default function AnnotateView() {
                     showToast("Falta la justificación de Tema / topic", "warn");
                     return;
                 }
+                const rejected = rejecting[rec.id] ?? new Set<string>();
+                const isCorrectionTopic = rejected.has("topic");
 
                 await annotationsApi.saveSentiment(projectId!, {
                     record_id: rec.id,
                     project_id: projectId!,
                     original_sentiment: rec.sentiment_llm ?? 2,
                     corrected_sentiment: rec.sentiment_llm ?? 2,
-                    is_correction: true,
+                    is_correction: isCorrectionTopic,
                     original_topic: rec.topic_llm ?? undefined,
                     corrected_topic: ann.topic,
                     topic_reason: ann.topic_reason,
@@ -426,13 +434,15 @@ export default function AnnotateView() {
                     showToast("Falta la justificación de Sentimiento", "warn");
                     return;
                 }
+                const rejected = rejecting[rec.id] ?? new Set<string>();
+                const isCorrectionSentiment = rejected.has("sentiment");
 
                 await annotationsApi.saveSentiment(projectId!, {
                     record_id: rec.id,
                     project_id: projectId!,
                     original_sentiment: rec.sentiment_llm ?? 2,
                     corrected_sentiment: ann.sentiment,
-                    is_correction: true,
+                    is_correction: isCorrectionSentiment,
                     correction_reason: ann.sentiment_reason,
                     original_topic: rec.topic_llm ?? undefined,
                     corrected_topic: rec.topic_llm ?? undefined,
@@ -464,7 +474,7 @@ export default function AnnotateView() {
                         pilar: key,
                         original_value: llmVal ?? 2,
                         corrected_value: pa.value,
-                        is_correction: true,
+                        is_correction: isCorrection,
                         correction_reason: pa.reason,
                     });
                 }
@@ -565,6 +575,7 @@ export default function AnnotateView() {
         }
 
         setSaving((prev) => ({ ...prev, [rec.id]: true }));
+
         saveMutation.mutate({ rec, ann });
     };
 
@@ -682,34 +693,78 @@ export default function AnnotateView() {
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
                                                     {isConfirmed ? (
                                                         <div style={S.confirmedTag}>
-                                                            <div>
-                                                                ✓ CONFIRMADO — valor: {
-                                                                    (rec as any)[`annotator_${f.key}`] ?? "(sin valor)"
-                                                                }
-                                                            </div>
-
-                                                            {(rec as any)[`annotator_${f.key}_reason`] && (
-                                                                <div style={{ marginTop: 4 }}>
-                                                                    Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                <div>
+                                                                    ✓ CONFIRMADO — valor:{" "}
+                                                                    {(rec as any)[`annotator_${f.key}`] ?? "(sin valor)"}
                                                                 </div>
-                                                            )}
+
+                                                                <button
+                                                                    style={S.undoBtn}
+                                                                    onClick={() => backToGate(rec.id, f.key)}
+                                                                >
+                                                                    ↶ Deshacer
+                                                                </button>
+
+                                                                {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                    <div style={{ marginTop: 4 }}>
+                                                                        Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     ) : isRejecting ? (
                                                         <div style={{ marginTop: 8 }}>
                                                             <div style={S.formLabel}>Nuevo valor:</div>
-                                                            <select style={S.input} value={fa.value ?? ""}
-                                                                onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
+
+                                                            <select
+                                                                style={S.input}
+                                                                value={fa.value ?? ""}
+                                                                onChange={(e) =>
+                                                                    setField(rec.id, f.key, { value: e.target.value })
+                                                                }
+                                                            >
                                                                 <option value="">— elige —</option>
-                                                                {opts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
+                                                                {opts.map((o) => (
+                                                                    <option key={o.v} value={o.v}>
+                                                                        {o.label}
+                                                                    </option>
+                                                                ))}
                                                             </select>
+
                                                             <div style={S.formLabel}>Justificación:</div>
-                                                            <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
-                                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, f.key)} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+
+                                                            <ReasonBox
+                                                                compact
+                                                                value={fa.reason}
+                                                                onChange={(v) =>
+                                                                    setField(rec.id, f.key, { reason: v })
+                                                                }
+                                                            />
+
+                                                            <button
+                                                                style={S.saveBtnSmall}
+                                                                onClick={() => handleSaveField(rec, f.key)}
+                                                                disabled={saving[rec.id]}
+                                                            >
+                                                                {saving[rec.id] ? "Guardando..." : "Guardar →"}
+                                                            </button>
                                                         </div>
                                                     ) : (
                                                         <div style={S.gateBtns}>
-                                                            <button style={S.confirmBtn} onClick={() => confirmField(rec.id, f.key)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, f.key)}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                                            <button
+                                                                style={S.confirmBtn}
+                                                                onClick={() => confirmField(rec.id, f.key)}
+                                                            >
+                                                                ✓ CONFIRMO / ESTOY DE ACUERDO
+                                                            </button>
+
+                                                            <button
+                                                                style={S.rejectBtn}
+                                                                onClick={() => markRejecting(rec.id, f.key)}
+                                                            >
+                                                                ✕ NO CONFIRMO / NO ESTOY DE ACUERDO
+                                                            </button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -723,34 +778,41 @@ export default function AnnotateView() {
                                     </div>
                                     <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
                                     {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
-                                    {confirmed.has("topic") ? (
-                                        <div style={S.confirmedTag}>
-                                            <div>
-                                                ✓ CONFIRMADO — valor: {
-                                                    rec.annotator_topic ?? "(sin valor)"
-                                                }
-                                            </div>
-
-                                            {rec.annotator_topic_reason && (
-                                                <div style={{ marginTop: 4 }}>
-                                                    Justificación: "{rec.annotator_topic_reason}"
+                                    {
+                                        confirmed.has("topic") ? (
+                                            <div style={S.confirmedTag}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div>
+                                                        ✓ CONFIRMADO — valor: {
+                                                            rec.annotator_topic ?? "(sin valor)"
+                                                        }
+                                                    </div>
+                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
+                                                        ↶ Deshacer
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </div>
-                                    ) : rejected.has("topic") ? (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={S.formLabel}>Nuevo valor:</div>
-                                            <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
-                                            <div style={S.formLabel}>Justificación:</div>
-                                            <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
-                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                        </div>
-                                    ) : (
-                                        <div style={S.gateBtns}>
-                                            <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                        </div>
-                                    )}
+
+                                                {rec.annotator_topic_reason && (
+                                                    <div style={{ marginTop: 4 }}>
+                                                        Justificación: "{rec.annotator_topic_reason}"
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ) : rejected.has("topic") ? (
+                                            <div style={{ marginTop: 8 }}>
+                                                <div style={S.formLabel}>Nuevo valor:</div>
+                                                <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
+                                                <div style={S.formLabel}>Justificación:</div>
+                                                <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
+                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+                                            </div>
+                                        ) : (
+                                            <div style={S.gateBtns}>
+                                                <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                            </div>
+                                        )
+                                    }
 
                                     {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
                                     <div style={{ ...S.sectionLabel, marginTop: 14, display: "flex", alignItems: "center" }}>
@@ -758,44 +820,53 @@ export default function AnnotateView() {
                                     </div>
                                     <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
                                     {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
-                                    {confirmed.has("sentiment") ? (
-                                        <div style={S.confirmedTag}>
-                                            <div>
-                                                ✓ CONFIRMADO — valor: {
-                                                    rec.annotator_sentiment !== undefined
-                                                        ? sentLabel(rec.annotator_sentiment)
-                                                        : "(sin valor)"
+                                    {
+                                        confirmed.has("sentiment") ? (
+                                            <div style={S.confirmedTag}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                    <div>
+                                                        ✓ CONFIRMADO — valor: {
+                                                            rec.annotator_sentiment !== undefined
+                                                                ? sentLabel(rec.annotator_sentiment)
+                                                                : "(sin valor)"
+                                                        }
+                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                            ↶ Deshacer
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {
+                                                    rec.annotator_sentiment_reason && (
+                                                        <div style={{ marginTop: 4 }}>
+                                                            Justificación: "{rec.annotator_sentiment_reason}"
+                                                        </div>
+                                                    )
                                                 }
                                             </div>
-
-                                            {rec.annotator_sentiment_reason && (
-                                                <div style={{ marginTop: 4 }}>
-                                                    Justificación: "{rec.annotator_sentiment_reason}"
+                                        ) : rejected.has("sentiment") ? (
+                                            <div style={{ marginTop: 8 }}>
+                                                <div style={S.formLabel}>Nuevo valor:</div>
+                                                <div style={S.sentBtns}>
+                                                    {SENT_OPTS.map((opt) => (
+                                                        <button key={opt.v}
+                                                            style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
+                                                            onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
+                                                            <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
+                                                        </button>
+                                                    ))}
                                                 </div>
-                                            )}
-                                        </div>
-                                    ) : rejected.has("sentiment") ? (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={S.formLabel}>Nuevo valor:</div>
-                                            <div style={S.sentBtns}>
-                                                {SENT_OPTS.map((opt) => (
-                                                    <button key={opt.v}
-                                                        style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
-                                                        onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
-                                                        <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
-                                                    </button>
-                                                ))}
+                                                <div style={S.formLabel}>Justificación:</div>
+                                                <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
+                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
                                             </div>
-                                            <div style={S.formLabel}>Justificación:</div>
-                                            <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
-                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                        </div>
-                                    ) : (
-                                        <div style={S.gateBtns}>
-                                            <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div style={S.gateBtns}>
+                                                <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                            </div>
+                                        )
+                                    }
 
                                     {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
                                     <div style={{ ...S.sectionLabel, marginTop: 14 }}>Pilares de aceptación</div>
@@ -827,12 +898,17 @@ export default function AnnotateView() {
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
                                                     {isConfirmed ? (
                                                         <div style={S.confirmedTag}>
-                                                            <div>
-                                                                ✓ CONFIRMADO — valor: {
-                                                                    pilarLabel(
-                                                                        (rec as any)[`annotator_${p.key}`]
-                                                                    )
-                                                                }
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                <div>
+                                                                    ✓ CONFIRMADO — valor: {
+                                                                        pilarLabel(
+                                                                            (rec as any)[`annotator_${p.key}`]
+                                                                        )
+                                                                    }
+                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
+                                                                        ↶ Deshacer
+                                                                    </button>
+                                                                </div>
                                                             </div>
 
                                                             {(rec as any)[`annotator_${p.key}_reason`] && (
@@ -901,10 +977,15 @@ export default function AnnotateView() {
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
                                                     {isConfirmed ? (
                                                         <div style={S.confirmedTag}>
-                                                            <div>
-                                                                ✓ CONFIRMADO — valor: {
-                                                                    (rec as any)[`annotator_${f.key}`] ?? "(sin valor)"
-                                                                }
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                                                <div>
+                                                                    ✓ CONFIRMADO — valor: {
+                                                                        (rec as any)[`annotator_${f.key}`] ?? "(sin valor)"
+                                                                    }
+                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, f.key)}>
+                                                                        ↶ Deshacer
+                                                                    </button>
+                                                                </div>
                                                             </div>
 
                                                             {(rec as any)[`annotator_${f.key}_reason`] && (
@@ -951,11 +1032,13 @@ export default function AnnotateView() {
                 )}
             </div>
 
-            {toast && (
-                <div style={{ ...S.toast, color: toast.type === "warn" ? "#e8962a" : "#2ec27e" }}>
-                    {toast.type === "warn" ? "⚠ " : "✓ "}{toast.msg}
-                </div>
-            )}
+            {
+                toast && (
+                    <div style={{ ...S.toast, color: toast.type === "warn" ? "#e8962a" : "#2ec27e" }}>
+                        {toast.type === "warn" ? "⚠ " : "✓ "}{toast.msg}
+                    </div>
+                )
+            }
         </div>
     );
 }
