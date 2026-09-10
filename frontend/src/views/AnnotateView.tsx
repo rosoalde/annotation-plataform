@@ -65,7 +65,7 @@ const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
 // especialmente los 4 pilares, donde no tenía vuestra definición operativa
 // exacta.
 type HelpContent = { que: string; valores?: string; ejemplos: string; regla?: string };
-const HELP: Record<string, HelpContent> = {
+export const HELP: Record<string, HelpContent> = {
     pertinencia: {
         que: "Indica si este contenido tiene relación con el tema que se está analizando en el proyecto, o si es ajeno a él (spam, publicidad, otro asunto sin relación).",
         valores: "relevante — el contenido trata sobre el tema del proyecto.\nirrelevante — no tiene relación con el tema.",
@@ -138,7 +138,7 @@ const HELP: Record<string, HelpContent> = {
     },
 };
 
-function HelpIcon({ fieldKey }: { fieldKey: string }) {
+export function HelpIcon({ fieldKey }: { fieldKey: string }) {
     const [open, setOpen] = useState(false);
     const h = HELP[fieldKey];
     if (!h) return null;
@@ -511,17 +511,8 @@ export default function AnnotateView() {
                                                     </div>
                                                     <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
-                                                    {!llmVal ? (
-                                                        <>
-                                                            <select style={{ ...S.input, marginTop: 6 }} value={fa.value ?? ""}
-                                                                onChange={(e) => setField(rec.id, f.key, { value: e.target.value })}>
-                                                                <option value="">— elige —</option>
-                                                                {opts.map((o) => <option key={o.v} value={o.v}>{o.label}</option>)}
-                                                            </select>
-                                                            <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
-                                                        </>
-                                                    ) : isConfirmed ? (
-                                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {llmVal}</div>
+                                                    {isConfirmed ? (
+                                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {llmVal || "(sin valor)"}</div>
                                                     ) : isRejecting ? (
                                                         <div style={{ marginTop: 8 }}>
                                                             <div style={S.formLabel}>Nuevo valor:</div>
@@ -551,13 +542,8 @@ export default function AnnotateView() {
                                     </div>
                                     <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
                                     {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
-                                    {!rec.topic_llm ? (
-                                        <>
-                                            <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
-                                            <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
-                                        </>
-                                    ) : confirmed.has("topic") ? (
-                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {rec.topic_llm}</div>
+                                    {confirmed.has("topic") ? (
+                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {rec.topic_llm || "(sin valor)"}</div>
                                     ) : rejected.has("topic") ? (
                                         <div style={{ marginTop: 8 }}>
                                             <div style={S.formLabel}>Nuevo valor:</div>
@@ -579,20 +565,7 @@ export default function AnnotateView() {
                                     </div>
                                     <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
                                     {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
-                                    {rec.sentiment_llm === undefined || rec.sentiment_llm === null ? (
-                                        <>
-                                            <div style={S.sentBtns}>
-                                                {SENT_OPTS.map((opt) => (
-                                                    <button key={opt.v}
-                                                        style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
-                                                        onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
-                                                        <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
-                                        </>
-                                    ) : confirmed.has("sentiment") ? (
+                                    {confirmed.has("sentiment") ? (
                                         <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {sentLabel(rec.sentiment_llm)}</div>
                                     ) : rejected.has("sentiment") ? (
                                         <div style={{ marginTop: 8 }}>
@@ -645,12 +618,7 @@ export default function AnnotateView() {
                                                     </div>
                                                     <div style={S.iaTag}>Valor: {pilarLabel(llmVal)}</div>
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
-                                                    {!hasLlm ? (
-                                                        <>
-                                                            {pilarBtns(pa.value, (v) => setPilar(rec.id, p.key, { value: v }))}
-                                                            <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
-                                                        </>
-                                                    ) : isConfirmed ? (
+                                                    {isConfirmed ? (
                                                         <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {pilarLabel(llmVal)}</div>
                                                     ) : isRejecting ? (
                                                         <div style={{ marginTop: 8 }}>
@@ -710,13 +678,8 @@ export default function AnnotateView() {
                                                     </div>
                                                     <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
-                                                    {!llmVal ? (
-                                                        <>
-                                                            <div style={{ marginTop: 6 }}>{valueInput(fa.value ?? "", (v) => setField(rec.id, f.key, { value: v }))}</div>
-                                                            <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
-                                                        </>
-                                                    ) : isConfirmed ? (
-                                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {llmVal}</div>
+                                                    {isConfirmed ? (
+                                                        <div style={S.confirmedTag}>✓ CONFIRMADO — valor: {llmVal || "(sin valor)"}</div>
                                                     ) : isRejecting ? (
                                                         <div style={{ marginTop: 8 }}>
                                                             <div style={S.formLabel}>Nuevo valor:</div>

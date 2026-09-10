@@ -3,10 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { judgeApi, annotationsApi, projectsApi } from "../services/api";
 import type { KeywordItem } from "../types";
-import { HelpIcon } from "./AnnotateView";
 
 const sentLabel = (v?: number) => ({ 1: "↑ Positivo", "-1": "↓ Negativo", 0: "→ Neutro", 2: "✕ No relac." }[String(v ?? "")] ?? "—");
-const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
 const sentColor = (v?: number) => ({ 1: "var(--green)", "-1": "var(--red)", 0: "var(--muted)", 2: "var(--border2)" }[String(v ?? "")] ?? "var(--muted)");
 const reviewBadge = (d?: string) => d === "accept" ? <span style={{ color: "var(--green)", fontSize: 9 }}> ✓revisado</span> : d === "reject" ? <span style={{ color: "var(--red)", fontSize: 9 }}> ✗rechazado</span> : null;
 
@@ -16,13 +14,6 @@ const S: Record<string, React.CSSProperties> = {
     content: { flex: 1, overflowY: "auto", padding: 22, maxWidth: 960 },
     recCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 16 },
     toast: { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
-    // ── Patrón de comparación de fuentes (LLM / anotadores) y decisión del juez ──
-    sectionTitle: { fontSize: 10, fontWeight: 600, color: "var(--amber)", marginBottom: 8, marginTop: 2, textTransform: "uppercase" as const, letterSpacing: "0.08em" },
-    sourceCard: { textAlign: "left" as const, cursor: "pointer", minWidth: 150, flex: "1 1 150px", borderRadius: "var(--r)", padding: "8px 10px", fontFamily: "inherit" },
-    judgeRow: { display: "flex", gap: 8, flexWrap: "wrap" as const },
-    judgeInput: { flex: 1, minWidth: 160, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "7px 10px", fontSize: 11, fontFamily: "inherit" },
-    judgeSaveBtn: { padding: "7px 14px", borderRadius: "var(--r)", color: "#fff", border: "none", fontSize: 11, fontWeight: 500 },
-    savedTag: { fontSize: 10, color: "var(--green)", marginTop: 6, fontWeight: 500 },
 };
 
 const SENT_OPTS = [
@@ -99,6 +90,21 @@ export default function JudgeView() {
     };
     const PILAR_OPTS = [{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }];
 
+    // Mismo listado que AnnotateView.tsx — se muestran todos aunque ningún
+    // anotador los haya corregido, para que el juez pueda decidir igual.
+    // const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
+    //     { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
+    //     { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
+    //     // { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
+    //     // { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
+    //     { key: "lang", label: "Idioma", justifKey: "justif_lang" },
+    //     { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
+    //     { key: "world_country", label: "País", justifKey: "justif_pais" },
+    //     { key: "world_region", label: "Región", justifKey: "justif_region" },
+    //     { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
+    //     // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
+    // ];
+
     const PERTINENCIA_POSTURA_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
         { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
         { key: "postura", label: "Postura", justifKey: "justif_postura" },
@@ -115,60 +121,6 @@ export default function JudgeView() {
     // Mismo conjunto que AnnotateView.tsx — usado por handleSaveAll para no
     // dejar afuera ningún campo de texto al guardar todo de una vez.
     const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
-
-    // ── Comparación LLM vs anotadores, compartida por los 6 campos/grupos ──
-    // Sustituye el bloque "🤖 LLM | 👤 anotador" + enlaces "← valor"/"← justif."
-    // que antes se repetía en cada sección: cada fuente es ahora una tarjeta
-    // que se puede pulsar una vez para adoptar valor + justificación juntos
-    // (igual que CONFIRMO en Anotar), y se señala si las fuentes coinciden o
-    // discrepan entre sí.
-    type CompareSource = { key: string; label: string; value: string | number; display: string; reason?: string; reviewDecision?: string };
-    const renderSourceCompare = (
-        jKey: string,
-        llm: { value?: string | number | null; display: string; reason?: string },
-        annotatorEntries: CompareSource[],
-    ) => {
-        const hasLlm = llm.value !== undefined && llm.value !== null && llm.value !== "";
-        const sources: CompareSource[] = [
-            ...(hasLlm ? [{ key: "llm", label: "🤖 LLM", value: llm.value as string | number, display: llm.display, reason: llm.reason }] : []),
-            ...annotatorEntries,
-        ];
-        const agreement = sources.length > 1 ? (new Set(sources.map(s => s.display)).size === 1 ? "agree" : "disagree") : null;
-        const selected = adoptedFrom[jKey];
-        return (
-            <div style={{ marginBottom: 8 }}>
-                {agreement && (
-                    <div style={{ fontSize: 9, fontWeight: 600, marginBottom: 6, color: agreement === "agree" ? "var(--green)" : "var(--amber)" }}>
-                        {agreement === "agree" ? "✓ Todas las fuentes coinciden" : "⚠ Hay discrepancia entre fuentes"}
-                    </div>
-                )}
-                <div style={S.judgeRow}>
-                    {sources.length === 0 && (
-                        <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Sin valor del LLM ni de anotadores todavía.</div>
-                    )}
-                    {sources.map(s => {
-                        const isSel = selected === s.key;
-                        return (
-                            <button key={s.key} type="button"
-                                onClick={() => {
-                                    setJudgeFields(p => ({ ...p, [jKey]: s.value, [`${jKey}__reason`]: s.reason ?? "" }));
-                                    setAdoptedFrom(p => ({ ...p, [jKey]: s.key }));
-                                }}
-                                style={{ ...S.sourceCard, background: isSel ? "rgba(78,123,239,0.12)" : "var(--bg)", border: `1.5px solid ${isSel ? "var(--accent)" : "var(--border)"}` }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                                    <span style={{ fontSize: 9, color: "var(--muted)" }}>{s.label}{reviewBadge(s.reviewDecision)}</span>
-                                    {isSel && <span style={{ fontSize: 9, color: "var(--accent2)", fontWeight: 600 }}>✓ elegido</span>}
-                                </div>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{s.display}</div>
-                                {s.reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)", marginTop: 2 }}>"{s.reason}"</div>}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
-
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
