@@ -3,10 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { judgeApi, annotationsApi, projectsApi } from "../services/api";
 import type { KeywordItem } from "../types";
-import { HelpIcon } from "./AnnotateView";
 
 const sentLabel = (v?: number) => ({ 1: "↑ Positivo", "-1": "↓ Negativo", 0: "→ Neutro", 2: "✕ No relac." }[String(v ?? "")] ?? "—");
-const pilarLabel = (v?: number | null) => ({ 1: "+1", "-1": "−1", 0: "0", 2: "N/A" }[String(v ?? "")] ?? "—");
 const sentColor = (v?: number) => ({ 1: "var(--green)", "-1": "var(--red)", 0: "var(--muted)", 2: "var(--border2)" }[String(v ?? "")] ?? "var(--muted)");
 const reviewBadge = (d?: string) => d === "accept" ? <span style={{ color: "var(--green)", fontSize: 9 }}> ✓revisado</span> : d === "reject" ? <span style={{ color: "var(--red)", fontSize: 9 }}> ✗rechazado</span> : null;
 
@@ -16,13 +14,20 @@ const S: Record<string, React.CSSProperties> = {
     content: { flex: 1, overflowY: "auto", padding: 22, maxWidth: 960 },
     recCard: { background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r2)", padding: 16, marginBottom: 16 },
     toast: { position: "fixed" as const, bottom: 20, right: 20, background: "var(--card)", border: "1px solid var(--border2)", borderRadius: "var(--r)", padding: "10px 16px", fontSize: 12, zIndex: 200 },
-    // ── Patrón de comparación de fuentes (LLM / anotadores) y decisión del juez ──
-    sectionTitle: { fontSize: 10, fontWeight: 600, color: "var(--amber)", marginBottom: 8, marginTop: 2, textTransform: "uppercase" as const, letterSpacing: "0.08em" },
-    sourceCard: { textAlign: "left" as const, cursor: "pointer", minWidth: 150, flex: "1 1 150px", borderRadius: "var(--r)", padding: "8px 10px", fontFamily: "inherit" },
-    judgeRow: { display: "flex", gap: 8, flexWrap: "wrap" as const },
-    judgeInput: { flex: 1, minWidth: 160, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "7px 10px", fontSize: 11, fontFamily: "inherit" },
-    judgeSaveBtn: { padding: "7px 14px", borderRadius: "var(--r)", color: "#fff", border: "none", fontSize: 11, fontWeight: 500 },
-    savedTag: { fontSize: 10, color: "var(--green)", marginTop: 6, fontWeight: 500 },
+    // ── Selector de candidatos (LLM / anotadores / nueva asignación) ──
+    candRow: { display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 8 },
+    candCard: { flex: "1 1 130px", minWidth: 130, textAlign: "left" as const, background: "var(--bg)", border: "1.5px solid var(--border)", borderRadius: "var(--r)", padding: "7px 10px", cursor: "pointer", fontFamily: "inherit", color: "inherit" },
+    candCardActive: { border: "1.5px solid var(--green)", background: "rgba(46,194,126,0.1)" },
+    candCardNew: { border: "1.5px dashed var(--border2)" },
+    candHead: { fontSize: 9, color: "var(--muted)", marginBottom: 3 },
+    candValue: { fontSize: 11, fontWeight: 600, color: "var(--text)" },
+    candJustif: { fontSize: 9, fontStyle: "italic" as const, color: "var(--muted)", marginTop: 2 },
+    finalLabel: { fontSize: 9, color: "var(--amber)", margin: "6px 0 4px" },
+    finalInput: { flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" },
+    saveBtn: { padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" },
+    saveBtnOff: { background: "var(--border)", cursor: "default" as const },
+    savedTag: { fontSize: 10, color: "var(--green)", marginTop: 5, display: "flex", alignItems: "center", gap: 8 },
+    undoLink: { fontSize: 9, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" as const },
 };
 
 const SENT_OPTS = [
@@ -31,6 +36,117 @@ const SENT_OPTS = [
     { v: 0, icon: "→", label: "Neutro", color: "var(--muted)" },
     { v: 2, icon: "✕", label: "No relac.", color: "var(--border2)" },
 ];
+
+// ── Selección de candidatos: LLM / cada anotador / "otro valor" ────────────
+// Sustituye a los antiguos enlaces sueltos "← valor" / "← justif." por
+// tarjetas clicables con estado seleccionado visible, en línea con el
+// patrón CONFIRMO/NO CONFIRMO de AnnotateView.tsx (mismo verde = elegido).
+type Candidate = { id: string; icon: string; label: string; value?: string | number; justif?: string };
+
+const sourceLabel = (id?: string) =>
+    !id ? undefined : id === "llm" ? "LLM" : id === "new" ? "el juez (asignación propia)" : `el anotador @${id}`;
+
+function JudgeCandidates({ candidates, selectedId, onPick, formatValue }: {
+    candidates: Candidate[];
+    selectedId?: string;
+    onPick: (c: Candidate) => void;
+    formatValue?: (v?: string | number) => string;
+}) {
+    return (
+        <div style={S.candRow}>
+            {candidates.map((c) => {
+                const isNew = c.id === "new";
+                const active = selectedId === c.id;
+                return (
+                    <button key={c.id} type="button" onClick={() => onPick(c)}
+                        style={{ ...S.candCard, ...(active ? S.candCardActive : isNew ? S.candCardNew : {}) }}>
+                        <div style={S.candHead}>{c.icon} {c.label}</div>
+                        {isNew ? (
+                            <div style={{ ...S.candValue, color: "var(--muted)", fontWeight: 400 }}>Escribir mi propia respuesta</div>
+                        ) : (
+                            <>
+                                <div style={S.candValue}>{formatValue ? formatValue(c.value) : (c.value ?? "—")}</div>
+                                {c.justif && <div style={S.candJustif}>{c.justif}</div>}
+                            </>
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+// Grupo completo para un campo de TEXTO: fila de candidatos + inputs
+// editables de valor/justificación final + guardar. Usado por pertinencia,
+// postura, topic y los 5 campos de geolocalización — antes cada uno
+// repetía esta misma estructura por separado.
+function TextFieldGroup({
+    label, accent, jKey, llmCandidate, annotatorCandidates,
+    judgeFields, setJudgeFields, adoptedFrom, setAdoptedFrom,
+    savedValue, savedReason, savedSource, onSave,
+}: {
+    label: string;
+    accent: string;
+    jKey: string;
+    llmCandidate: Candidate;
+    annotatorCandidates: Candidate[];
+    judgeFields: Record<string, string | number | boolean | undefined>;
+    setJudgeFields: React.Dispatch<React.SetStateAction<Record<string, string | number | boolean | undefined>>>;
+    adoptedFrom: Record<string, string>;
+    setAdoptedFrom: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+    savedValue?: string;
+    savedReason?: string;
+    savedSource?: string;
+    onSave: (finalText: string, reason: string | undefined, source: string) => Promise<unknown>;
+}) {
+    const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates, { id: "new", icon: "✎", label: "Otro valor" }];
+    const selected = adoptedFrom[jKey];
+    const draft = (judgeFields[jKey] as string) ?? savedValue ?? "";
+    const draftReason = (judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? "";
+    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
+
+    return (
+        <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: accent, marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{label}</div>
+            <JudgeCandidates
+                candidates={candidates}
+                selectedId={selected}
+                onPick={(c) => {
+                    if (c.id === "new") {
+                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; delete n[`${jKey}__saved`]; return n; });
+                        setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
+                        return;
+                    }
+                    setJudgeFields(p => ({ ...p, [jKey]: c.value ?? "", [`${jKey}__reason`]: c.justif ?? "", [`${jKey}__saved`]: undefined }));
+                    setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
+                }}
+            />
+            <div style={S.finalLabel}>Texto final del juez (editable):</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+                <input style={S.finalInput} placeholder="Valor final..." value={draft}
+                    onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value, [`${jKey}__saved`]: undefined }))} />
+                <input style={{ ...S.finalInput, fontSize: 10 }} placeholder="Justificación de tu asignación..." value={draftReason}
+                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value, [`${jKey}__saved`]: undefined }))} />
+                <button disabled={!isDirty}
+                    onClick={async () => {
+                        try {
+                            await onSave(draft, draftReason || undefined, selected ?? "new");
+                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
+                        } catch { }
+                    }}
+                    style={{ ...S.saveBtn, ...(isDirty ? {} : S.saveBtnOff) }}>
+                    Guardar →
+                </button>
+            </div>
+            {((judgeFields[`${jKey}__saved`] === true) || (savedValue !== undefined && judgeFields[jKey] === undefined)) && (
+                <div style={S.savedTag}>
+                    ✓ Guardado{sourceLabel(savedSource ?? selected) ? ` · adoptado de ${sourceLabel(savedSource ?? selected)}` : ""}
+                    <button style={S.undoLink} onClick={() => setJudgeFields(p => { const n = { ...p }; delete n[`${jKey}__saved`]; return n; })}>cambiar</button>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default function JudgeView() {
     const { id: projectId } = useParams<{ id: string }>();
@@ -46,7 +162,7 @@ export default function JudgeView() {
     const [collapsedInitialized, setCollapsedInitialized] = useState(false);
     const [decisions, setDecisions] = useState<Record<string, number>>({});
 
-    const [judgeFields, setJudgeFields] = useState<Record<string, string | number>>({});
+    const [judgeFields, setJudgeFields] = useState<Record<string, string | number | boolean | undefined>>({});
     const [adoptedFrom, setAdoptedFrom] = useState<Record<string, string>>({});
     const [editingDesc, setEditingDesc] = useState(false);
     const [descDraft, setDescDraft] = useState("");
@@ -99,6 +215,21 @@ export default function JudgeView() {
     };
     const PILAR_OPTS = [{ v: 1, l: "+1" }, { v: 0, l: "0" }, { v: -1, l: "−1" }, { v: 2, l: "N/A" }];
 
+    // Mismo listado que AnnotateView.tsx — se muestran todos aunque ningún
+    // anotador los haya corregido, para que el juez pueda decidir igual.
+    // const TEXT_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
+    //     { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
+    //     { key: "posicion", label: "Posición", justifKey: "justif_posicion" },
+    //     // { key: "idioma_ia", label: "Idioma (detección original)", justifKey: null },
+    //     // { key: "lang", label: "Idioma (reanálisis)", justifKey: "justif_lang" },
+    //     { key: "lang", label: "Idioma", justifKey: "justif_lang" },
+    //     { key: "world_continent", label: "Continente", justifKey: "justif_continente" },
+    //     { key: "world_country", label: "País", justifKey: "justif_pais" },
+    //     { key: "world_region", label: "Región", justifKey: "justif_region" },
+    //     { key: "world_city", label: "Ciudad", justifKey: "justif_ciudad" },
+    //     // { key: "codigo_pais", label: "Código país (ISO)", justifKey: null },
+    // ];
+
     const PERTINENCIA_POSTURA_FIELDS: Array<{ key: string; label: string; justifKey: string | null }> = [
         { key: "pertinencia", label: "Pertinencia", justifKey: "justif_pertinencia" },
         { key: "postura", label: "Postura", justifKey: "justif_postura" },
@@ -115,60 +246,6 @@ export default function JudgeView() {
     // Mismo conjunto que AnnotateView.tsx — usado por handleSaveAll para no
     // dejar afuera ningún campo de texto al guardar todo de una vez.
     const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
-
-    // ── Comparación LLM vs anotadores, compartida por los 6 campos/grupos ──
-    // Sustituye el bloque "🤖 LLM | 👤 anotador" + enlaces "← valor"/"← justif."
-    // que antes se repetía en cada sección: cada fuente es ahora una tarjeta
-    // que se puede pulsar una vez para adoptar valor + justificación juntos
-    // (igual que CONFIRMO en Anotar), y se señala si las fuentes coinciden o
-    // discrepan entre sí.
-    type CompareSource = { key: string; label: string; value: string | number; display: string; reason?: string; reviewDecision?: string };
-    const renderSourceCompare = (
-        jKey: string,
-        llm: { value?: string | number | null; display: string; reason?: string },
-        annotatorEntries: CompareSource[],
-    ) => {
-        const hasLlm = llm.value !== undefined && llm.value !== null && llm.value !== "";
-        const sources: CompareSource[] = [
-            ...(hasLlm ? [{ key: "llm", label: "🤖 LLM", value: llm.value as string | number, display: llm.display, reason: llm.reason }] : []),
-            ...annotatorEntries,
-        ];
-        const agreement = sources.length > 1 ? (new Set(sources.map(s => s.display)).size === 1 ? "agree" : "disagree") : null;
-        const selected = adoptedFrom[jKey];
-        return (
-            <div style={{ marginBottom: 8 }}>
-                {agreement && (
-                    <div style={{ fontSize: 9, fontWeight: 600, marginBottom: 6, color: agreement === "agree" ? "var(--green)" : "var(--amber)" }}>
-                        {agreement === "agree" ? "✓ Todas las fuentes coinciden" : "⚠ Hay discrepancia entre fuentes"}
-                    </div>
-                )}
-                <div style={S.judgeRow}>
-                    {sources.length === 0 && (
-                        <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>Sin valor del LLM ni de anotadores todavía.</div>
-                    )}
-                    {sources.map(s => {
-                        const isSel = selected === s.key;
-                        return (
-                            <button key={s.key} type="button"
-                                onClick={() => {
-                                    setJudgeFields(p => ({ ...p, [jKey]: s.value, [`${jKey}__reason`]: s.reason ?? "" }));
-                                    setAdoptedFrom(p => ({ ...p, [jKey]: s.key }));
-                                }}
-                                style={{ ...S.sourceCard, background: isSel ? "rgba(78,123,239,0.12)" : "var(--bg)", border: `1.5px solid ${isSel ? "var(--accent)" : "var(--border)"}` }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-                                    <span style={{ fontSize: 9, color: "var(--muted)" }}>{s.label}{reviewBadge(s.reviewDecision)}</span>
-                                    {isSel && <span style={{ fontSize: 9, color: "var(--accent2)", fontWeight: 600 }}>✓ elegido</span>}
-                                </div>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{s.display}</div>
-                                {s.reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)", marginTop: 2 }}>"{s.reason}"</div>}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
-
     const [exporting, setExporting] = useState(false);
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
@@ -504,83 +581,18 @@ export default function JudgeView() {
                                     const llmVal = (record as any)[fieldKey] as string | undefined;
                                     const llmJustif = justifKey ? (record as any)[justifKey] as string | undefined : undefined;
                                     const fieldVals = fieldsByKey[fieldKey] ?? [];
-                                    const existing = fieldVals[0];
                                     const savedText = fieldVals.find(a => a.judge_final_text != null)?.judge_final_text;
                                     const savedReason = fieldVals.find(a => a.judge_final_text != null)?.judge_reason ?? undefined;
+                                    const savedSource = fieldVals.find(a => a.judge_final_text != null)?.judge_source ?? undefined;
                                     const jKey = `${record.id}__field__${fieldKey}`;
-                                    const draft = (judgeFields[jKey] as string) ?? savedText ?? "";
-                                    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
                                     return (
-                                        <div key={fieldKey} style={{ marginBottom: 12 }}>
-                                            <div style={{ fontSize: 9, fontWeight: 600, color: "var(--accent2)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em" }}>{label}</div>
-                                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 8 }}>
-                                                {/* LLM */}
-                                                <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "6px 10px", fontSize: 10 }}>
-                                                    <div style={{ color: "var(--muted)", marginBottom: 2 }}>🤖 LLM: <strong style={{ color: "var(--text)" }}>{llmVal || "—"}</strong></div>
-                                                    {llmJustif && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{llmJustif}</div>}
-                                                    {llmVal && (
-                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: llmVal })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
-                                                                ← valor
-                                                            </button>
-                                                            {llmJustif && (
-                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: llmJustif ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: "llm" })); }}>
-                                                                    ← justif.
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {/* Anotadores */}
-                                                {fieldVals.length === 0 && (
-                                                    <div style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic", alignSelf: "center" }}>Ningún anotador lo corrigió</div>
-                                                )}
-                                                {fieldVals.map(a => (
-                                                    <div key={a.id} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "6px 10px", fontSize: 10 }}>
-                                                        <div style={{ color: "var(--muted)", marginBottom: 2 }}>
-                                                            👤 {a.annotator}{reviewBadge(a.reviewer_decision)}: <strong style={{ color: "var(--text)" }}>{a.corrected_text ?? "—"}</strong>
-                                                        </div>
-                                                        {a.correction_reason && <div style={{ fontSize: 9, fontStyle: "italic", color: "var(--muted)" }}>{a.correction_reason}</div>}
-                                                        <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-                                                            <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: a.corrected_text ?? llmVal ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
-                                                                ← valor
-                                                            </button>
-                                                            {a.correction_reason && (
-                                                                <button style={{ fontSize: 9, color: "var(--accent2)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
-                                                                    onClick={() => { setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: a.correction_reason ?? "" })); setAdoptedFrom(p => ({ ...p, [jKey]: a.annotator })); }}>
-                                                                    ← justif.
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-                                                <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" }}
-                                                    placeholder="Valor final del juez..." value={draft}
-                                                    onChange={e => { setJudgeFields(p => { const n = { ...p, [jKey]: e.target.value }; delete n[`${jKey}__saved`]; return n; }); setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; }); }} />
-                                                <input style={{ flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 10, fontFamily: "inherit" }}
-                                                    placeholder="Justificación de tu asignación..." value={(judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? ""}
-                                                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value }))} />
-                                                <button disabled={!isDirty}
-                                                    onClick={async () => {
-                                                        const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
-                                                        try {
-                                                            await judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason, source: adoptedFrom[jKey] ?? "new" });
-                                                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
-                                                        } catch { }
-                                                    }}
-                                                    style={{ padding: "5px 12px", borderRadius: "var(--r)", background: isDirty ? "var(--accent)" : "var(--border)", color: "#fff", border: "none", fontSize: 11, cursor: isDirty ? "pointer" : "default" }}>
-                                                    Guardar →
-                                                </button>
-                                            </div>
-                                            {savedText !== undefined && judgeFields[jKey] === undefined && (
-                                                <div style={{ fontSize: 9, color: "var(--green)", marginTop: 4 }}>✓ guardado: {savedText}</div>
-                                            )}
-                                        </div>
+                                        <TextFieldGroup key={fieldKey} label={label} accent="var(--accent2)" jKey={jKey}
+                                            llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: llmVal, justif: llmJustif }}
+                                            annotatorCandidates={fieldVals.map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_text, justif: a.correction_reason }))}
+                                            judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
+                                            savedValue={savedText} savedReason={savedReason} savedSource={savedSource}
+                                            onSave={(finalText, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: finalText, reason, source })}
+                                        />
                                     );
                                 })}
                             </div>

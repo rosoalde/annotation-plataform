@@ -150,8 +150,9 @@ export const judgeApi = {
         http.post(`/judge/decide/${annotationId}`, { annotation_id: annotationId, final_text: finalText, reason }).then((r) => r.data),
 
     decideNew: (data: {
-        record_id: string; project_id: string; annotation_type: "pilar" | "field";
+        record_id: string; project_id: string; annotation_type: "pilar" | "field" | "sentiment";
         pilar?: string; field_name?: string; final_value?: number; final_text?: string; reason?: string;
+        source?: string;  // "llm" | username del anotador adoptado | "new"
     }) => http.post("/judge/decide-new", data).then((r) => r.data),
 
     reset: (projectId: string) =>

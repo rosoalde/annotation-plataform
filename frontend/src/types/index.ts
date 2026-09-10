@@ -241,6 +241,7 @@ export interface JudgeAnnotation {
     judge_final_value?: number;
     judge_final_text?: string;
     judge_reason?: string;
+    judge_source?: string;
     reviewer_decision?: "accept" | "reject";
 }
 
