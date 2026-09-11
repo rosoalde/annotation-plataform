@@ -37,7 +37,7 @@ const POSTURA_OPTS = [
 ];
 // Se cargan dinámicamente desde /api/resources/* para no hardcodear 250 países
 // Por ahora ponemos los más frecuentes; el backend puede exponerlos si se desea
-const CONTINENT_OPTS = ["EU", "NA", "SA", "AF", "AS", "OC", "N/A"];
+const CONTINENT_OPTS: string[] = [...new Set((COUNTRIES_RAW as any[]).map((c) => c.continent).filter(Boolean))].sort().concat("N/A");
 
 // Campos de texto genéricos: se guardan vía POST /annotations/field.
 // justifKey es null cuando ese campo no tiene una justificación dedicada del LLM.
@@ -1125,10 +1125,12 @@ export default function AnnotateView() {
                                             const isRejecting = rejected.has(f.key);
                                             const valueInput = (val: string, onChange: (v: string) => void) =>
                                                 f.key === "world_continent" ? (
-                                                    <select style={S.input} value={val} onChange={(e) => onChange(e.target.value)}>
-                                                        <option value="">— elige —</option>
-                                                        {CONTINENT_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
-                                                    </select>
+                                                    <>
+                                                        <input list={`continents-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
+                                                        <datalist id={`continents-${rec.id}`}>
+                                                            {CONTINENT_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                                                        </datalist>
+                                                    </>
                                                 ) : f.key === "world_country" ? (
                                                     <>
                                                         <input list={`countries-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />

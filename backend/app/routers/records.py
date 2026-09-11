@@ -167,7 +167,7 @@ async def list_records(
                     annotator[a.pilar] = a.corrected_value
                     annotator[f"{a.pilar}_reason"] = a.correction_reason
 
-            elif a.annotation_type == "keyword":
+            elif a.annotation_type == "field":
                 field = a.field_name
 
                 field_map = {
