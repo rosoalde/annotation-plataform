@@ -201,6 +201,25 @@ export default function AnnotateView() {
     // que los rellene).
     const [confirmedFields, setConfirmedFields] = useState<Record<string, Set<string>>>({});
     const [rejecting, setRejecting] = useState<Record<string, Set<string>>>({});
+    // Campos donde el anotador pulsó "↶ Deshacer" sobre una tarjeta que solo
+    // se mostraba como confirmada por datos YA GUARDADOS (wasSavedByMe), no
+    // por una decisión de esta sesión. Sin esto, Deshacer no tendría nada
+    // que borrar en confirmedFields/rejecting (ya estaban vacíos) y la
+    // tarjeta "confirmada" no desaparecería al pulsarlo.
+    const [dismissedSaved, setDismissedSaved] = useState<Record<string, Set<string>>>({});
+
+    // confirmedFields/rejecting son estado LOCAL: se reinician a {} en cada
+    // carga de la página. rec.annotator_* es lo que YA quedó guardado en el
+    // backend en una sesión anterior. Sin este fallback, recargar la página
+    // hace que todo lo ya guardado se vea como "sin decidir" (los dos
+    // botones CONFIRMO/NO CONFIRMO), aunque los datos sigan intactos.
+    const wasSavedByMe = (rec: AnnotRecord, key: string): boolean => {
+        if (dismissedSaved[rec.id]?.has(key)) return false;
+        if (key === "topic") return !!rec.annotator_topic;
+        if (key === "sentiment") return rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== null;
+        const v = (rec as any)[`annotator_${key}`];
+        return v !== undefined && v !== null && v !== "";
+    };
 
     const markRejecting = (recId: string, key: string) => {
         setRejecting((prev) => ({ ...prev, [recId]: new Set([...(prev[recId] ?? []), key]) }));
@@ -252,6 +271,7 @@ export default function AnnotateView() {
     const backToGate = (recId: string, key: string) => {
         setConfirmedFields((prev) => { const s = new Set(prev[recId] ?? []); s.delete(key); return { ...prev, [recId]: s }; });
         setRejecting((prev) => { const s = new Set(prev[recId] ?? []); s.delete(key); return { ...prev, [recId]: s }; });
+        setDismissedSaved((prev) => ({ ...prev, [recId]: new Set([...(prev[recId] ?? []), key]) }));
     };
 
     const confirmField = (recId: string, key: string) => {
@@ -534,9 +554,9 @@ export default function AnnotateView() {
             }));
 
             setRejecting((prev) => {
-                const next = { ...prev };
-                delete next[rec.id];
-                return next;
+                const s = new Set(prev[rec.id] ?? []);
+                s.delete(key);
+                return { ...prev, [rec.id]: s };
             });
 
             // Forzamos una nueva consulta del record concreto.
@@ -573,8 +593,8 @@ export default function AnnotateView() {
             const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
             if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
         }
-        if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic")) pending.push("Tema / topic");
-        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment")) pending.push("Sentimiento (topic)");
+        if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
+        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment === undefined) pending.push("Sentimiento (topic)");
         for (const p of PILARS) {
             const llmVal = (rec as any)[p.key] as number | undefined;
             const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
