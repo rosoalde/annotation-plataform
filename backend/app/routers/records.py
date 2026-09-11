@@ -112,7 +112,7 @@ async def list_records(
                 Annotation.record_id == rec.id,
                 Annotation.project_id == project_id,
                 Annotation.annotator_id == current_user.id,
-            )
+            ).order_by(Annotation.created_at.asc())
         )
         user_annotations = ann_r.scalars().all()
 

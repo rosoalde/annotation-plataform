@@ -739,7 +739,7 @@ export default function AnnotateView() {
                                             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
                                             const fa = ann.fields[f.key] ?? {};
                                             const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
-                                            const isConfirmed = confirmed.has(f.key);
+                                            const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
                                             const isRejecting = rejected.has(f.key);
                                             const opts = f.key === "pertinencia"
                                                 ? PERTINENCIA_OPTS.map((o) => ({ v: o, label: o }))
@@ -780,7 +780,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {(rec as any)[`annotator_${f.key}`] && (
+                                                            {(rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
@@ -896,7 +896,7 @@ export default function AnnotateView() {
                                     <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
                                     {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
                                     {
-                                        confirmed.has("topic") ? (
+                                        (confirmed.has("topic") || wasSavedByMe(rec, "topic")) && !rejected.has("topic") ? (
                                             <>
                                                 {/* ✓ CONFIRMADO LLM (VERDE) */}
                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
@@ -920,7 +920,7 @@ export default function AnnotateView() {
                                                     </div>
                                                 </div>
                                                 {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {rec.annotator_topic && (
+                                                {rec.annotator_topic && rec.annotator_topic !== rec.topic_llm && (
                                                     <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                             <div style={{ flex: 1 }}>
@@ -966,7 +966,7 @@ export default function AnnotateView() {
                                     <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
                                     {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
                                     {
-                                        confirmed.has("sentiment") ? (
+                                        (confirmed.has("sentiment") || wasSavedByMe(rec, "sentiment")) && !rejected.has("sentiment") ? (
                                             <>
                                                 {/* ✓ CONFIRMADO LLM (VERDE) */}
                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
@@ -991,7 +991,7 @@ export default function AnnotateView() {
                                                 </div>
 
                                                 {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {rec.annotator_sentiment !== undefined && (
+                                                {rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== rec.sentiment_llm && (
                                                     <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                             <div style={{ flex: 1 }}>
@@ -1046,7 +1046,7 @@ export default function AnnotateView() {
                                             const pa = ann.pilars[p.key] ?? {};
                                             const justif = (rec as any)[p.justifKey] as string | undefined;
                                             const hasLlm = llmVal !== undefined && llmVal !== null;
-                                            const isConfirmed = confirmed.has(p.key);
+                                            const isConfirmed = (confirmed.has(p.key) || wasSavedByMe(rec, p.key)) && !rejected.has(p.key);
                                             const isRejecting = rejected.has(p.key);
                                             const pilarBtns = (sel: number | undefined, onPick: (v: number) => void) => (
                                                 <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
@@ -1092,7 +1092,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {(rec as any)[`annotator_${p.key}`] !== undefined && (
+                                                            {(rec as any)[`annotator_${p.key}`] !== undefined && (rec as any)[`annotator_${p.key}`] !== llmVal && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
@@ -1141,7 +1141,7 @@ export default function AnnotateView() {
                                             const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
                                             const fa = ann.fields[f.key] ?? {};
                                             const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
-                                            const isConfirmed = confirmed.has(f.key);
+                                            const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
                                             const isRejecting = rejected.has(f.key);
                                             const valueInput = (val: string, onChange: (v: string) => void) =>
                                                 f.key === "world_continent" ? (
@@ -1200,7 +1200,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {(rec as any)[`annotator_${f.key}`] && (
+                                                            {(rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
