@@ -504,6 +504,8 @@ export default function AnnotateView() {
                     }
 
                     const llmVal = (rec as any)[key] as number | undefined;
+                    const rejected = rejecting[rec.id] ?? new Set<string>();
+                    const isCorrectionPilar = rejected.has(key);
 
                     await annotationsApi.savePilar(projectId!, {
                         record_id: rec.id,
@@ -511,7 +513,7 @@ export default function AnnotateView() {
                         pilar: key,
                         original_value: llmVal ?? 2,
                         corrected_value: pa.value,
-                        is_correction: isCorrection,
+                        is_correction: isCorrectionPilar,
                         correction_reason: pa.reason,
                     });
                 }
@@ -1045,7 +1047,7 @@ export default function AnnotateView() {
                                                     <div style={S.iaTag}>Valor: {pilarLabel(llmVal)}</div>
                                                     {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
 
-                                                    {confirmed.has("sentiment") ? (
+                                                    {isConfirmed ? (
                                                         <>
                                                             {/* ✓ CONFIRMADO LLM (VERDE) */}
                                                             <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
@@ -1055,22 +1057,22 @@ export default function AnnotateView() {
                                                                             ✓ CONFIRMADO LLM
                                                                         </div>
                                                                         <div style={{ marginTop: 4 }}>
-                                                                            valor: {sentLabel(rec.sentiment_llm)}
+                                                                            valor: {pilarLabel(llmVal)}
                                                                         </div>
-                                                                        {rec.justif_sentimiento && (
+                                                                        {justif && (
                                                                             <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                                Justificación: "{rec.justif_sentimiento}"
+                                                                                Justificación: "{justif}"
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
                                                                         ↶ Deshacer
                                                                     </button>
                                                                 </div>
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {rec.annotator_sentiment !== undefined && (
+                                                            {(rec as any)[`annotator_${p.key}`] !== undefined && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
@@ -1078,15 +1080,15 @@ export default function AnnotateView() {
                                                                                 ✓ CONFIRMADO ANOTADOR
                                                                             </div>
                                                                             <div style={{ marginTop: 4 }}>
-                                                                                valor: {sentLabel(rec.annotator_sentiment)}
+                                                                                valor: {pilarLabel((rec as any)[`annotator_${p.key}`])}
                                                                             </div>
-                                                                            {rec.annotator_sentiment_reason && (
+                                                                            {(rec as any)[`annotator_${p.key}_reason`] && (
                                                                                 <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                                    Justificación: "{rec.annotator_sentiment_reason}"
+                                                                                    Justificación: "{(rec as any)[`annotator_${p.key}_reason`]}"
                                                                                 </div>
                                                                             )}
                                                                         </div>
-                                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
                                                                             ↶ Deshacer
                                                                         </button>
                                                                     </div>
