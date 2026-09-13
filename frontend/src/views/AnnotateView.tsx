@@ -449,7 +449,6 @@ export default function AnnotateView() {
             // campo suelto (arriba) NO deben sacarlo de la cola.
             await annotationsApi.complete(projectId!, rec.id);
         },
-    },
         onSuccess: (_, { rec }) => {
             setSaving((prev) => { const n = { ...prev }; delete n[rec.id]; return n; });
             setAnnotations((prev) => { const n = { ...prev }; delete n[rec.id]; return n; });
@@ -465,415 +464,389 @@ export default function AnnotateView() {
         },
     });
 
-const getAnn = (recId: string) => annotations[recId] ?? emptyAnn();
-const setAnn = (recId: string, patch: Partial<RecordAnn>) =>
-    setAnnotations((prev) => ({ ...prev, [recId]: { ...emptyAnn(), ...prev[recId], ...patch } }));
-const setPilar = (recId: string, key: string, patch: { value?: number; reason?: string }) =>
-    setAnnotations((prev) => {
-        const cur = prev[recId] ?? emptyAnn();
-        return { ...prev, [recId]: { ...cur, pilars: { ...cur.pilars, [key]: { ...cur.pilars[key], ...patch } } } };
-    });
-const setField = (recId: string, key: string, patch: FieldState) =>
-    setAnnotations((prev) => {
-        const cur = prev[recId] ?? emptyAnn();
-        return { ...prev, [recId]: { ...cur, fields: { ...cur.fields, [key]: { ...cur.fields[key], ...patch } } } };
-    });
+    const getAnn = (recId: string) => annotations[recId] ?? emptyAnn();
+    const setAnn = (recId: string, patch: Partial<RecordAnn>) =>
+        setAnnotations((prev) => ({ ...prev, [recId]: { ...emptyAnn(), ...prev[recId], ...patch } }));
+    const setPilar = (recId: string, key: string, patch: { value?: number; reason?: string }) =>
+        setAnnotations((prev) => {
+            const cur = prev[recId] ?? emptyAnn();
+            return { ...prev, [recId]: { ...cur, pilars: { ...cur.pilars, [key]: { ...cur.pilars[key], ...patch } } } };
+        });
+    const setField = (recId: string, key: string, patch: FieldState) =>
+        setAnnotations((prev) => {
+            const cur = prev[recId] ?? emptyAnn();
+            return { ...prev, [recId]: { ...cur, fields: { ...cur.fields, [key]: { ...cur.fields[key], ...patch } } } };
+        });
 
-const handleSaveField = async (
-    rec: AnnotRecord,
-    key: string
-) => {
-    const ann = getAnn(rec.id);
+    const handleSaveField = async (
+        rec: AnnotRecord,
+        key: string
+    ) => {
+        const ann = getAnn(rec.id);
 
-    try {
-        setSaving((prev) => ({ ...prev, [rec.id]: true }));
+        try {
+            setSaving((prev) => ({ ...prev, [rec.id]: true }));
 
-        // ── Campos de texto: pertinencia, postura, idioma, geo ──
-        const textField = TEXT_FIELDS.find((f) => f.key === key);
+            // ── Campos de texto: pertinencia, postura, idioma, geo ──
+            const textField = TEXT_FIELDS.find((f) => f.key === key);
 
-        if (textField) {
-            const fa = ann.fields[key];
-            const llmVal = ((rec as any)[key] as string | undefined) ?? "";
-            const value = fa?.value ?? "";
-            const reason = fa?.reason ?? "";
-            const rejected = rejecting[rec.id] ?? new Set<string>();
-            const isCorrection = rejected.has(key);
-
-            if (!value) {
-                showToast(`Falta el valor de ${textField.label}`, "warn");
-                return;
-            }
-
-            if (!reason.trim()) {
-                showToast(`Falta la justificación de ${textField.label}`, "warn");
-                return;
-            }
-
-            await annotationsApi.saveField(projectId!, {
-                record_id: rec.id,
-                project_id: projectId!,
-                field_name: key,
-                original_text: llmVal,
-                corrected_text: value,
-                is_correction: isCorrection,
-                correction_reason: reason,
-            });
-        }
-
-        // ── Tema / topic ──
-        else if (key === "topic") {
-            if (!ann.topic?.trim()) {
-                showToast("Falta el valor de Tema / topic", "warn");
-                return;
-            }
-
-            if (!ann.topic_reason?.trim()) {
-                showToast("Falta la justificación de Tema / topic", "warn");
-                return;
-            }
-            const rejected = rejecting[rec.id] ?? new Set<string>();
-            const isCorrectionTopic = rejected.has("topic");
-
-            await annotationsApi.saveSentiment(projectId!, {
-                record_id: rec.id,
-                project_id: projectId!,
-                original_sentiment: rec.sentiment_llm ?? 2,
-                corrected_sentiment: rec.annotator_sentiment ?? rec.sentiment_llm ?? 2,
-                is_correction: isCorrectionTopic,
-                original_topic: rec.topic_llm ?? undefined,
-                corrected_topic: ann.topic,
-                topic_reason: ann.topic_reason,
-            });
-        }
-
-        // ── Sentimiento ──
-        else if (key === "sentiment") {
-            if (ann.sentiment === undefined) {
-                showToast("Falta el valor de Sentimiento", "warn");
-                return;
-            }
-
-            if (!ann.sentiment_reason?.trim()) {
-                showToast("Falta la justificación de Sentimiento", "warn");
-                return;
-            }
-            const rejected = rejecting[rec.id] ?? new Set<string>();
-            const isCorrectionSentiment = rejected.has("sentiment");
-
-            await annotationsApi.saveSentiment(projectId!, {
-                record_id: rec.id,
-                project_id: projectId!,
-                original_sentiment: rec.sentiment_llm ?? 2,
-                corrected_sentiment: ann.sentiment,
-                is_correction: isCorrectionSentiment,
-                correction_reason: ann.sentiment_reason,
-                original_topic: rec.topic_llm ?? undefined,
-                corrected_topic: rec.annotator_topic ?? rec.topic_llm ?? undefined,
-            });
-        }
-
-        // ── Pilares ──
-        else {
-            const pilar = PILARS.find((p) => p.key === key);
-
-            if (pilar) {
-                const pa = ann.pilars[key];
-
-                if (pa?.value === undefined) {
-                    showToast(`Falta el valor de ${pilar.label}`, "warn");
-                    return;
-                }
-
-                if (!pa.reason?.trim()) {
-                    showToast(`Falta la justificación de ${pilar.label}`, "warn");
-                    return;
-                }
-
-                const llmVal = (rec as any)[key] as number | undefined;
+            if (textField) {
+                const fa = ann.fields[key];
+                const llmVal = ((rec as any)[key] as string | undefined) ?? "";
+                const value = fa?.value ?? "";
+                const reason = fa?.reason ?? "";
                 const rejected = rejecting[rec.id] ?? new Set<string>();
-                const isCorrectionPilar = rejected.has(key);
+                const isCorrection = rejected.has(key);
 
-                await annotationsApi.savePilar(projectId!, {
+                if (!value) {
+                    showToast(`Falta el valor de ${textField.label}`, "warn");
+                    return;
+                }
+
+                if (!reason.trim()) {
+                    showToast(`Falta la justificación de ${textField.label}`, "warn");
+                    return;
+                }
+
+                await annotationsApi.saveField(projectId!, {
                     record_id: rec.id,
                     project_id: projectId!,
-                    pilar: key,
-                    original_value: llmVal ?? 2,
-                    corrected_value: pa.value,
-                    is_correction: isCorrectionPilar,
-                    correction_reason: pa.reason,
+                    field_name: key,
+                    original_text: llmVal,
+                    corrected_text: value,
+                    is_correction: isCorrection,
+                    correction_reason: reason,
                 });
             }
+
+            // ── Tema / topic ──
+            else if (key === "topic") {
+                if (!ann.topic?.trim()) {
+                    showToast("Falta el valor de Tema / topic", "warn");
+                    return;
+                }
+
+                if (!ann.topic_reason?.trim()) {
+                    showToast("Falta la justificación de Tema / topic", "warn");
+                    return;
+                }
+                const rejected = rejecting[rec.id] ?? new Set<string>();
+                const isCorrectionTopic = rejected.has("topic");
+
+                await annotationsApi.saveSentiment(projectId!, {
+                    record_id: rec.id,
+                    project_id: projectId!,
+                    original_sentiment: rec.sentiment_llm ?? 2,
+                    corrected_sentiment: rec.annotator_sentiment ?? rec.sentiment_llm ?? 2,
+                    is_correction: isCorrectionTopic,
+                    original_topic: rec.topic_llm ?? undefined,
+                    corrected_topic: ann.topic,
+                    topic_reason: ann.topic_reason,
+                });
+            }
+
+            // ── Sentimiento ──
+            else if (key === "sentiment") {
+                if (ann.sentiment === undefined) {
+                    showToast("Falta el valor de Sentimiento", "warn");
+                    return;
+                }
+
+                if (!ann.sentiment_reason?.trim()) {
+                    showToast("Falta la justificación de Sentimiento", "warn");
+                    return;
+                }
+                const rejected = rejecting[rec.id] ?? new Set<string>();
+                const isCorrectionSentiment = rejected.has("sentiment");
+
+                await annotationsApi.saveSentiment(projectId!, {
+                    record_id: rec.id,
+                    project_id: projectId!,
+                    original_sentiment: rec.sentiment_llm ?? 2,
+                    corrected_sentiment: ann.sentiment,
+                    is_correction: isCorrectionSentiment,
+                    correction_reason: ann.sentiment_reason,
+                    original_topic: rec.topic_llm ?? undefined,
+                    corrected_topic: rec.annotator_topic ?? rec.topic_llm ?? undefined,
+                });
+            }
+
+            // ── Pilares ──
+            else {
+                const pilar = PILARS.find((p) => p.key === key);
+
+                if (pilar) {
+                    const pa = ann.pilars[key];
+
+                    if (pa?.value === undefined) {
+                        showToast(`Falta el valor de ${pilar.label}`, "warn");
+                        return;
+                    }
+
+                    if (!pa.reason?.trim()) {
+                        showToast(`Falta la justificación de ${pilar.label}`, "warn");
+                        return;
+                    }
+
+                    const llmVal = (rec as any)[key] as number | undefined;
+                    const rejected = rejecting[rec.id] ?? new Set<string>();
+                    const isCorrectionPilar = rejected.has(key);
+
+                    await annotationsApi.savePilar(projectId!, {
+                        record_id: rec.id,
+                        project_id: projectId!,
+                        pilar: key,
+                        original_value: llmVal ?? 2,
+                        corrected_value: pa.value,
+                        is_correction: isCorrectionPilar,
+                        correction_reason: pa.reason,
+                    });
+                }
+            }
+
+            // El backend ya ha persistido la anotación.
+            // Limpiamos solo el borrador de ESTE campo — no todo el
+            // registro, para no perder ediciones sin guardar de otros
+            // campos del mismo registro.
+            setAnnotations((prev) => {
+                const cur = prev[rec.id];
+                if (!cur) return prev;
+                const next = { ...cur };
+                if (textField) {
+                    next.fields = { ...next.fields };
+                    delete next.fields[key];
+                } else if (key === "topic") {
+                    next.topic = undefined;
+                    next.topic_reason = undefined;
+                } else if (key === "sentiment") {
+                    next.sentiment = undefined;
+                    next.sentiment_reason = undefined;
+                } else {
+                    next.pilars = { ...next.pilars };
+                    delete next.pilars[key];
+                }
+                return { ...prev, [rec.id]: next };
+            });
+
+            setConfirmedFields((prev) => ({
+                ...prev,
+                [rec.id]: new Set([...(prev[rec.id] ?? []), key])
+            }));
+
+            setRejecting((prev) => {
+                const s = new Set(prev[rec.id] ?? []);
+                s.delete(key);
+                return { ...prev, [rec.id]: s };
+            });
+
+            // Forzamos una nueva consulta del record concreto.
+            // La pantalla pasará a utilizar rec.annotator_*.
+            setRefreshRecordId(rec.id);
+
+            qc.invalidateQueries({
+                queryKey: ["records", projectId, "annotate"],
+            });
+
+            showToast("Guardado ✓");
+
+        } catch (err) {
+            console.error(err);
+            showToast("Error al guardar", "warn");
+        } finally {
+            setSaving((prev) => {
+                const n = { ...prev };
+                delete n[rec.id];
+                return n;
+            });
+        }
+    };
+    const handleSave = (rec: AnnotRecord) => {
+        const ann = getAnn(rec.id);
+        const confirmed = confirmedFields[rec.id] ?? new Set<string>();
+        const rejected = rejecting[rec.id] ?? new Set<string>();
+
+        // Campos con valor del LLM que todavía no tienen ninguna decisión
+        // (ni CONFIRMO ni NO CONFIRMO).
+        const pending: string[] = [];
+        for (const f of TEXT_FIELDS) {
+            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+            const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
+            if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
+        }
+        if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
+        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment === undefined) pending.push("Sentimiento (topic)");
+        for (const p of PILARS) {
+            const llmVal = (rec as any)[p.key] as number | undefined;
+            const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
+            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal === undefined) pending.push(p.label);
+        }
+        if (pending.length > 0) {
+            const ok = window.confirm(
+                `⚠ Los siguientes campos no tienen decisión (ni CONFIRMO ni NO CONFIRMO):\n\n${pending.join(", ")}\n\n¿Guardar igualmente?`
+            );
+            if (!ok) return;
         }
 
-        // El backend ya ha persistido la anotación.
-        // Limpiamos solo el borrador de ESTE campo — no todo el
-        // registro, para no perder ediciones sin guardar de otros
-        // campos del mismo registro.
-        setAnnotations((prev) => {
-            const cur = prev[rec.id];
-            if (!cur) return prev;
-            const next = { ...cur };
-            if (textField) {
-                next.fields = { ...next.fields };
-                delete next.fields[key];
-            } else if (key === "topic") {
-                next.topic = undefined;
-                next.topic_reason = undefined;
-            } else if (key === "sentiment") {
-                next.sentiment = undefined;
-                next.sentiment_reason = undefined;
-            } else {
-                next.pilars = { ...next.pilars };
-                delete next.pilars[key];
-            }
-            return { ...prev, [rec.id]: next };
-        });
+        // Campos marcados NO CONFIRMO: exigir valor Y justificación propios.
+        const missing: string[] = [];
+        for (const f of TEXT_FIELDS) {
+            if (!rejected.has(f.key)) continue;
+            const fa = ann.fields[f.key];
+            if (!fa?.value) missing.push(`${f.label} (valor)`);
+            if (!fa?.reason) missing.push(`${f.label} (justificación)`);
+        }
+        if (rejected.has("topic")) {
+            if (!ann.topic) missing.push("Tema / topic (valor)");
+            if (!ann.topic_reason) missing.push("Tema / topic (justificación)");
+        }
+        if (rejected.has("sentiment")) {
+            if (ann.sentiment === undefined) missing.push("Sentimiento (valor)");
+            if (!ann.sentiment_reason) missing.push("Sentimiento (justificación)");
+        }
+        for (const p of PILARS) {
+            if (!rejected.has(p.key)) continue;
+            const pa = ann.pilars[p.key];
+            if (pa?.value === undefined) missing.push(`${p.label} (valor)`);
+            if (!pa?.reason) missing.push(`${p.label} (justificación)`);
+        }
+        if (missing.length > 0) {
+            showToast(`Faltan datos en: ${missing.join(", ")}`, "warn");
+            return;
+        }
 
-        setConfirmedFields((prev) => ({
-            ...prev,
-            [rec.id]: new Set([...(prev[rec.id] ?? []), key])
-        }));
+        setSaving((prev) => ({ ...prev, [rec.id]: true }));
 
-        setRejecting((prev) => {
-            const s = new Set(prev[rec.id] ?? []);
-            s.delete(key);
-            return { ...prev, [rec.id]: s };
-        });
+        saveMutation.mutate({ rec, ann });
+    };
 
-        // Forzamos una nueva consulta del record concreto.
-        // La pantalla pasará a utilizar rec.annotator_*.
-        setRefreshRecordId(rec.id);
+    if (isLoading) return <PageMsg>Cargando registros...</PageMsg>;
+    if (error) return <PageMsg>Error al cargar: {String(error)}</PageMsg>;
+    if (!projectId) return <PageMsg>Falta el proyecto</PageMsg>;
 
-        qc.invalidateQueries({
-            queryKey: ["records", projectId, "annotate"],
-        });
+    const { records, total, pending, done } = data!;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-        showToast("Guardado ✓");
-
-    } catch (err) {
-        console.error(err);
-        showToast("Error al guardar", "warn");
-    } finally {
-        setSaving((prev) => {
-            const n = { ...prev };
-            delete n[rec.id];
-            return n;
-        });
-    }
-};
-const handleSave = (rec: AnnotRecord) => {
-    const ann = getAnn(rec.id);
-    const confirmed = confirmedFields[rec.id] ?? new Set<string>();
-    const rejected = rejecting[rec.id] ?? new Set<string>();
-
-    // Campos con valor del LLM que todavía no tienen ninguna decisión
-    // (ni CONFIRMO ni NO CONFIRMO).
-    const pending: string[] = [];
-    for (const f of TEXT_FIELDS) {
-        const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
-        const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
-        if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
-    }
-    if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
-    if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment === undefined) pending.push("Sentimiento (topic)");
-    for (const p of PILARS) {
-        const llmVal = (rec as any)[p.key] as number | undefined;
-        const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
-        if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal === undefined) pending.push(p.label);
-    }
-    if (pending.length > 0) {
-        const ok = window.confirm(
-            `⚠ Los siguientes campos no tienen decisión (ni CONFIRMO ni NO CONFIRMO):\n\n${pending.join(", ")}\n\n¿Guardar igualmente?`
-        );
-        if (!ok) return;
-    }
-
-    // Campos marcados NO CONFIRMO: exigir valor Y justificación propios.
-    const missing: string[] = [];
-    for (const f of TEXT_FIELDS) {
-        if (!rejected.has(f.key)) continue;
-        const fa = ann.fields[f.key];
-        if (!fa?.value) missing.push(`${f.label} (valor)`);
-        if (!fa?.reason) missing.push(`${f.label} (justificación)`);
-    }
-    if (rejected.has("topic")) {
-        if (!ann.topic) missing.push("Tema / topic (valor)");
-        if (!ann.topic_reason) missing.push("Tema / topic (justificación)");
-    }
-    if (rejected.has("sentiment")) {
-        if (ann.sentiment === undefined) missing.push("Sentimiento (valor)");
-        if (!ann.sentiment_reason) missing.push("Sentimiento (justificación)");
-    }
-    for (const p of PILARS) {
-        if (!rejected.has(p.key)) continue;
-        const pa = ann.pilars[p.key];
-        if (pa?.value === undefined) missing.push(`${p.label} (valor)`);
-        if (!pa?.reason) missing.push(`${p.label} (justificación)`);
-    }
-    if (missing.length > 0) {
-        showToast(`Faltan datos en: ${missing.join(", ")}`, "warn");
-        return;
-    }
-
-    setSaving((prev) => ({ ...prev, [rec.id]: true }));
-
-    saveMutation.mutate({ rec, ann });
-};
-
-if (isLoading) return <PageMsg>Cargando registros...</PageMsg>;
-if (error) return <PageMsg>Error al cargar: {String(error)}</PageMsg>;
-if (!projectId) return <PageMsg>Falta el proyecto</PageMsg>;
-
-const { records, total, pending, done } = data!;
-const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-
-return (
-    <div style={S.page}>
-        <div style={S.topbar}>
-            <span style={S.topbarTitle}>Anotar</span>
-            <span style={S.badge}>{pending} pendientes</span>
-        </div>
-
-        <div style={S.content}>
-            <ProjectContextBar projectId={projectId} />
-
-            <div style={S.progressCard}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: "#6b7080" }}>Progreso</span>
-                    <span style={{ fontSize: 11, fontFamily: "monospace", color: "#dde1ec" }}>{pct}%  ({done}/{total})</span>
-                </div>
-                <div style={S.progressTrack}><div style={{ ...S.progressFill, width: `${pct}%` }} /></div>
+    return (
+        <div style={S.page}>
+            <div style={S.topbar}>
+                <span style={S.topbarTitle}>Anotar</span>
+                <span style={S.badge}>{pending} pendientes</span>
             </div>
 
-            {records.length === 0 && (
-                <div style={S.emptyState}>
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
-                    <div style={{ fontWeight: 500, color: "#dde1ec" }}>¡Todo anotado por ti!</div>
-                    <div style={{ fontSize: 12, color: "#6b7080", marginTop: 4 }}>No quedan registros pendientes en esta página.</div>
+            <div style={S.content}>
+                <ProjectContextBar projectId={projectId} />
+
+                <div style={S.progressCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: "#6b7080" }}>Progreso</span>
+                        <span style={{ fontSize: 11, fontFamily: "monospace", color: "#dde1ec" }}>{pct}%  ({done}/{total})</span>
+                    </div>
+                    <div style={S.progressTrack}><div style={{ ...S.progressFill, width: `${pct}%` }} /></div>
                 </div>
-            )}
 
-            {records.map((rec) => {
-                const ann = getAnn(rec.id);
-                const lockErr = lockErrors[rec.id];
-                const isLocked = rec.locked_by_other;
-                const hasLock = lockedIds.has(rec.id);
-                const unlocked = hasLock && !isLocked;
-                const confirmed = confirmedFields[rec.id] ?? new Set<string>();
-                const rejected = rejecting[rec.id] ?? new Set<string>();
+                {records.length === 0 && (
+                    <div style={S.emptyState}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
+                        <div style={{ fontWeight: 500, color: "#dde1ec" }}>¡Todo anotado por ti!</div>
+                        <div style={{ fontSize: 12, color: "#6b7080", marginTop: 4 }}>No quedan registros pendientes en esta página.</div>
+                    </div>
+                )}
 
-                return (
-                    <div key={rec.id} style={S.recordCard}>
-                        {/* Metadatos + contenido */}
-                        <div style={S.recordMeta}>
-                            <span style={{ ...S.platBadge, color: platColor(rec.platform) }}>{platIcon(rec.platform)} {rec.platform ?? "?"}</span>
-                            {rec.tipo && <span style={S.tipoBadge}>{rec.tipo}</span>}
-                            <span style={{ fontSize: 10, color: "#6b7080" }}>{rec.fecha}</span>
-                            {(rec.world_city || rec.world_country || rec.lang) && (
-                                <span style={S.worldBadge}>
-                                    🌍 {[rec.world_city, rec.world_country].filter(Boolean).join(", ") || "—"}{rec.lang ? ` · ${rec.lang}` : ""}
-                                </span>
-                            )}
-                        </div>
+                {records.map((rec) => {
+                    const ann = getAnn(rec.id);
+                    const lockErr = lockErrors[rec.id];
+                    const isLocked = rec.locked_by_other;
+                    const hasLock = lockedIds.has(rec.id);
+                    const unlocked = hasLock && !isLocked;
+                    const confirmed = confirmedFields[rec.id] ?? new Set<string>();
+                    const rejected = rejecting[rec.id] ?? new Set<string>();
 
-                        {isLocked && !lockErr && (
-                            <div style={S.lockWarn}>
-                                🔒 Este registro está siendo anotado por otra persona.
-                                {rec.locked_until && ` Lock expira: ${new Date(rec.locked_until).toLocaleTimeString()}`}
+                    return (
+                        <div key={rec.id} style={S.recordCard}>
+                            {/* Metadatos + contenido */}
+                            <div style={S.recordMeta}>
+                                <span style={{ ...S.platBadge, color: platColor(rec.platform) }}>{platIcon(rec.platform)} {rec.platform ?? "?"}</span>
+                                {rec.tipo && <span style={S.tipoBadge}>{rec.tipo}</span>}
+                                <span style={{ fontSize: 10, color: "#6b7080" }}>{rec.fecha}</span>
+                                {(rec.world_city || rec.world_country || rec.lang) && (
+                                    <span style={S.worldBadge}>
+                                        🌍 {[rec.world_city, rec.world_country].filter(Boolean).join(", ") || "—"}{rec.lang ? ` · ${rec.lang}` : ""}
+                                    </span>
+                                )}
                             </div>
-                        )}
-                        {lockErr && <div style={S.lockError}>⚠ {lockErr}</div>}
 
-                        {rec.url_post && (
-                            <div style={{ marginBottom: 8 }}>
-                                <a href={rec.url_post} target="_blank" rel="noopener noreferrer" style={S.link}>
-                                    🔗 Ver post original en {rec.platform || "la plataforma"} ↗
-                                </a>
-                            </div>
-                        )}
-
-                        {rec.cuerpo_padre && (
-                            <div style={{ ...S.ctxBlock, borderLeft: "2px solid #9b72ef" }}>
-                                <div style={S.ctxLabel}>Post raíz (contexto)</div>
-                                {rec.titulo_padre && <div style={S.ctxLine}><strong>[Título]</strong> {rec.titulo_padre}</div>}
-                                <div style={{ ...S.ctxLine, color: "#6b7080" }}>
-                                    {rec.cuerpo_padre.slice(0, 300)}{rec.cuerpo_padre.length > 300 ? "…" : ""}
+                            {isLocked && !lockErr && (
+                                <div style={S.lockWarn}>
+                                    🔒 Este registro está siendo anotado por otra persona.
+                                    {rec.locked_until && ` Lock expira: ${new Date(rec.locked_until).toLocaleTimeString()}`}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                            {lockErr && <div style={S.lockError}>⚠ {lockErr}</div>}
 
-                        <div style={S.sectionLabel}>Contenido a clasificar</div>
-                        <div style={{ ...S.contentBlock, borderLeftColor: sentColor(rec.sentiment_llm) }}>{rec.content}</div>
+                            {rec.url_post && (
+                                <div style={{ marginBottom: 8 }}>
+                                    <a href={rec.url_post} target="_blank" rel="noopener noreferrer" style={S.link}>
+                                        🔗 Ver post original en {rec.platform || "la plataforma"} ↗
+                                    </a>
+                                </div>
+                            )}
 
-                        {!hasLock && !isLocked && !lockErr && (
-                            <button style={S.lockBtn} onClick={() => lockMutation.mutate(rec.id)} disabled={lockMutation.isPending}>
-                                🔓 Abrir para anotar
-                            </button>
-                        )}
+                            {rec.cuerpo_padre && (
+                                <div style={{ ...S.ctxBlock, borderLeft: "2px solid #9b72ef" }}>
+                                    <div style={S.ctxLabel}>Post raíz (contexto)</div>
+                                    {rec.titulo_padre && <div style={S.ctxLine}><strong>[Título]</strong> {rec.titulo_padre}</div>}
+                                    <div style={{ ...S.ctxLine, color: "#6b7080" }}>
+                                        {rec.cuerpo_padre.slice(0, 300)}{rec.cuerpo_padre.length > 300 ? "…" : ""}
+                                    </div>
+                                </div>
+                            )}
 
-                        {unlocked && (
-                            <>
-                                {/* ── 1. PERTINENCIA Y POSTURA ─────────────────────────────── */}
-                                <div style={{ ...S.sectionLabel, marginTop: 12 }}>Pertinencia y postura</div>
-                                <div style={S.fieldGrid}>
-                                    {PERTINENCIA_POSTURA_FIELDS.map((f) => {
-                                        const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
-                                        const fa = ann.fields[f.key] ?? {};
-                                        const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
-                                        const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
-                                        const isRejecting = rejected.has(f.key);
-                                        const opts = f.key === "pertinencia"
-                                            ? PERTINENCIA_OPTS.map((o) => ({ v: o, label: o }))
-                                            : POSTURA_OPTS;
-                                        return (
-                                            <div key={f.key} style={S.smallCard}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: f.color, marginBottom: 4, display: "flex", alignItems: "center" }}>
-                                                    {f.label} <HelpIcon fieldKey={f.key} />
-                                                </div>
-                                                <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
-                                                {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
+                            <div style={S.sectionLabel}>Contenido a clasificar</div>
+                            <div style={{ ...S.contentBlock, borderLeftColor: sentColor(rec.sentiment_llm) }}>{rec.content}</div>
 
-                                                {isConfirmed ? (
-                                                    <>
-                                                        {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                                        <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                                <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                                        ✓ CONFIRMADO LLM
-                                                                    </div>
-                                                                    <div style={{ marginTop: 4 }}>
-                                                                        valor: {(rec as any)[f.key] ?? "(sin valor)"}
-                                                                    </div>
-                                                                    {f.justifKey && (rec as any)[f.justifKey] && (
-                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                            Justificación: "{(rec as any)[f.justifKey]}"
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <button
-                                                                    style={S.undoBtn}
-                                                                    onClick={() => backToGate(rec.id, f.key)}
-                                                                >
-                                                                    ↶ Deshacer
-                                                                </button>
-                                                            </div>
-                                                        </div>
+                            {!hasLock && !isLocked && !lockErr && (
+                                <button style={S.lockBtn} onClick={() => lockMutation.mutate(rec.id)} disabled={lockMutation.isPending}>
+                                    🔓 Abrir para anotar
+                                </button>
+                            )}
 
-                                                        {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                        {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
-                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                            {unlocked && (
+                                <>
+                                    {/* ── 1. PERTINENCIA Y POSTURA ─────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 12 }}>Pertinencia y postura</div>
+                                    <div style={S.fieldGrid}>
+                                        {PERTINENCIA_POSTURA_FIELDS.map((f) => {
+                                            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+                                            const fa = ann.fields[f.key] ?? {};
+                                            const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
+                                            const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
+                                            const isRejecting = rejected.has(f.key);
+                                            const opts = f.key === "pertinencia"
+                                                ? PERTINENCIA_OPTS.map((o) => ({ v: o, label: o }))
+                                                : POSTURA_OPTS;
+                                            return (
+                                                <div key={f.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: f.color, marginBottom: 4, display: "flex", alignItems: "center" }}>
+                                                        {f.label} <HelpIcon fieldKey={f.key} />
+                                                    </div>
+                                                    <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
+                                                    {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
+
+                                                    {isConfirmed ? (
+                                                        <>
+                                                            {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
                                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                     <div style={{ flex: 1 }}>
-                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                            ✓ CONFIRMADO ANOTADOR
+                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                            ✓ CONFIRMADO LLM
                                                                         </div>
                                                                         <div style={{ marginTop: 4 }}>
-                                                                            valor: {(rec as any)[`annotator_${f.key}`]}
+                                                                            valor: {(rec as any)[f.key] ?? "(sin valor)"}
                                                                         </div>
-                                                                        {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                        {f.justifKey && (rec as any)[f.justifKey] && (
                                                                             <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                                Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                                Justificación: "{(rec as any)[f.justifKey]}"
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -885,135 +858,139 @@ return (
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                        )}
-                                                    </>
-                                                ) : isRejecting ? (
-                                                    <div style={{ marginTop: 8 }}>
-                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                                                            <div style={{ flex: 1 }}>
-                                                                <div style={{ fontSize: 11, color: "#e05252", fontWeight: 600 }}>
-                                                                    ✕ NO CONFIRMADO
+
+                                                            {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                            {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
+                                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                                ✓ CONFIRMADO ANOTADOR
+                                                                            </div>
+                                                                            <div style={{ marginTop: 4 }}>
+                                                                                valor: {(rec as any)[`annotator_${f.key}`]}
+                                                                            </div>
+                                                                            {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                                <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                                    Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <button
+                                                                            style={S.undoBtn}
+                                                                            onClick={() => backToGate(rec.id, f.key)}
+                                                                        >
+                                                                            ↶ Deshacer
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                                {fa.value && (
-                                                                    <div style={{ marginTop: 4, fontSize: 10 }}>
-                                                                        Nuevo valor: <strong>{fa.value}</strong>
+                                                            )}
+                                                        </>
+                                                    ) : isRejecting ? (
+                                                        <div style={{ marginTop: 8 }}>
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: 11, color: "#e05252", fontWeight: 600 }}>
+                                                                        ✕ NO CONFIRMADO
                                                                     </div>
-                                                                )}
-                                                                {fa.reason && (
-                                                                    <div style={{ marginTop: 2, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                        Nueva justificación: "{fa.reason}"
-                                                                    </div>
-                                                                )}
+                                                                    {fa.value && (
+                                                                        <div style={{ marginTop: 4, fontSize: 10 }}>
+                                                                            Nuevo valor: <strong>{fa.value}</strong>
+                                                                        </div>
+                                                                    )}
+                                                                    {fa.reason && (
+                                                                        <div style={{ marginTop: 2, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                            Nueva justificación: "{fa.reason}"
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    style={S.undoBtn}
+                                                                    onClick={() => backToGate(rec.id, f.key)}
+                                                                >
+                                                                    ↶ Deshacer
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                style={S.undoBtn}
-                                                                onClick={() => backToGate(rec.id, f.key)}
+
+                                                            <div style={S.formLabel}>Nuevo valor:</div>
+
+                                                            <select
+                                                                style={S.input}
+                                                                value={fa.value ?? ""}
+                                                                onChange={(e) =>
+                                                                    setField(rec.id, f.key, { value: e.target.value })
+                                                                }
                                                             >
-                                                                ↶ Deshacer
+                                                                <option value="">— elige —</option>
+                                                                {opts.map((o) => (
+                                                                    <option key={o.v} value={o.v}>
+                                                                        {o.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+
+                                                            <div style={S.formLabel}>Justificación:</div>
+
+                                                            <ReasonBox
+                                                                compact
+                                                                value={fa.reason}
+                                                                onChange={(v) =>
+                                                                    setField(rec.id, f.key, { reason: v })
+                                                                }
+                                                            />
+
+                                                            <button
+                                                                style={S.saveBtnSmall}
+                                                                onClick={() => handleSaveField(rec, f.key)}
+                                                                disabled={saving[rec.id]}
+                                                            >
+                                                                {saving[rec.id] ? "Guardando..." : "Guardar →"}
                                                             </button>
                                                         </div>
+                                                    ) : (
+                                                        <div style={S.gateBtns}>
+                                                            <button
+                                                                style={S.confirmBtn}
+                                                                onClick={() => confirmField(rec.id, f.key)}
+                                                            >
+                                                                ✓ CONFIRMO / ESTOY DE ACUERDO
+                                                            </button>
 
-                                                        <div style={S.formLabel}>Nuevo valor:</div>
-
-                                                        <select
-                                                            style={S.input}
-                                                            value={fa.value ?? ""}
-                                                            onChange={(e) =>
-                                                                setField(rec.id, f.key, { value: e.target.value })
-                                                            }
-                                                        >
-                                                            <option value="">— elige —</option>
-                                                            {opts.map((o) => (
-                                                                <option key={o.v} value={o.v}>
-                                                                    {o.label}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-
-                                                        <div style={S.formLabel}>Justificación:</div>
-
-                                                        <ReasonBox
-                                                            compact
-                                                            value={fa.reason}
-                                                            onChange={(v) =>
-                                                                setField(rec.id, f.key, { reason: v })
-                                                            }
-                                                        />
-
-                                                        <button
-                                                            style={S.saveBtnSmall}
-                                                            onClick={() => handleSaveField(rec, f.key)}
-                                                            disabled={saving[rec.id]}
-                                                        >
-                                                            {saving[rec.id] ? "Guardando..." : "Guardar →"}
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div style={S.gateBtns}>
-                                                        <button
-                                                            style={S.confirmBtn}
-                                                            onClick={() => confirmField(rec.id, f.key)}
-                                                        >
-                                                            ✓ CONFIRMO / ESTOY DE ACUERDO
-                                                        </button>
-
-                                                        <button
-                                                            style={S.rejectBtn}
-                                                            onClick={() => markRejecting(rec.id, f.key)}
-                                                        >
-                                                            ✕ NO CONFIRMO / NO ESTOY DE ACUERDO
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* ── 2. TEMA / TOPIC ───────────────────────────────────────── */}
-                                <div style={{ ...S.sectionLabel, marginTop: 12, display: "flex", alignItems: "center" }}>
-                                    Tema / topic <HelpIcon fieldKey="topic" />
-                                </div>
-                                <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
-                                {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
-                                {
-                                    (confirmed.has("topic") || wasSavedByMe(rec, "topic")) && !rejected.has("topic") ? (
-                                        <>
-                                            {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                            ✓ CONFIRMADO LLM
+                                                            <button
+                                                                style={S.rejectBtn}
+                                                                onClick={() => markRejecting(rec.id, f.key)}
+                                                            >
+                                                                ✕ NO CONFIRMO / NO ESTOY DE ACUERDO
+                                                            </button>
                                                         </div>
-                                                        <div style={{ marginTop: 4 }}>
-                                                            valor: {rec.topic_llm ?? "(sin valor)"}
-                                                        </div>
-                                                        {rec.justif_topic && (
-                                                            <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                Justificación: "{rec.justif_topic}"
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
-                                                        ↶ Deshacer
-                                                    </button>
+                                                    )}
                                                 </div>
-                                            </div>
-                                            {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                            {!confirmed.has("topic") && rec.annotator_topic && rec.annotator_topic !== rec.topic_llm && (
-                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* ── 2. TEMA / TOPIC ───────────────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 12, display: "flex", alignItems: "center" }}>
+                                        Tema / topic <HelpIcon fieldKey="topic" />
+                                    </div>
+                                    <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
+                                    {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
+                                    {
+                                        (confirmed.has("topic") || wasSavedByMe(rec, "topic")) && !rejected.has("topic") ? (
+                                            <>
+                                                {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                         <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                ✓ CONFIRMADO ANOTADOR
+                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                ✓ CONFIRMADO LLM
                                                             </div>
                                                             <div style={{ marginTop: 4 }}>
-                                                                valor: {rec.annotator_topic}
+                                                                valor: {rec.topic_llm ?? "(sin valor)"}
                                                             </div>
-                                                            {rec.annotator_topic_reason && (
+                                                            {rec.justif_topic && (
                                                                 <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                    Justificación: "{rec.annotator_topic_reason}"
+                                                                    Justificación: "{rec.justif_topic}"
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1022,69 +999,68 @@ return (
                                                         </button>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </>
-                                    ) : rejected.has("topic") ? (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={S.formLabel}>Nuevo valor:</div>
-                                            <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
-                                            <div style={S.formLabel}>Justificación:</div>
-                                            <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
-                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                        </div>
-                                    ) : (
-                                        <div style={S.gateBtns}>
-                                            <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                        </div>
-                                    )
-                                }
-
-                                {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
-                                <div style={{ ...S.sectionLabel, marginTop: 14, display: "flex", alignItems: "center" }}>
-                                    Sentimiento (topic) <HelpIcon fieldKey="sentiment" />
-                                </div>
-                                <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
-                                {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
-                                {
-                                    (confirmed.has("sentiment") || wasSavedByMe(rec, "sentiment")) && !rejected.has("sentiment") ? (
-                                        <>
-                                            {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                    <div style={{ flex: 1 }}>
-                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                            ✓ CONFIRMADO LLM
-                                                        </div>
-                                                        <div style={{ marginTop: 4 }}>
-                                                            valor: {sentLabel(rec.sentiment_llm)}
-                                                        </div>
-                                                        {rec.justif_sentimiento && (
-                                                            <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                Justificación: "{rec.justif_sentimiento}"
+                                                {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                {!confirmed.has("topic") && rec.annotator_topic && rec.annotator_topic !== rec.topic_llm && (
+                                                    <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                    ✓ CONFIRMADO ANOTADOR
+                                                                </div>
+                                                                <div style={{ marginTop: 4 }}>
+                                                                    valor: {rec.annotator_topic}
+                                                                </div>
+                                                                {rec.annotator_topic_reason && (
+                                                                    <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                        Justificación: "{rec.annotator_topic_reason}"
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                            <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
+                                                                ↶ Deshacer
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
-                                                        ↶ Deshacer
-                                                    </button>
-                                                </div>
+                                                )}
+                                            </>
+                                        ) : rejected.has("topic") ? (
+                                            <div style={{ marginTop: 8 }}>
+                                                <div style={S.formLabel}>Nuevo valor:</div>
+                                                <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
+                                                <div style={S.formLabel}>Justificación:</div>
+                                                <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
+                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
                                             </div>
+                                        ) : (
+                                            <div style={S.gateBtns}>
+                                                <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                            </div>
+                                        )
+                                    }
 
-                                            {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                            {!confirmed.has("sentiment") && rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== rec.sentiment_llm && (
-                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                    {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 14, display: "flex", alignItems: "center" }}>
+                                        Sentimiento (topic) <HelpIcon fieldKey="sentiment" />
+                                    </div>
+                                    <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
+                                    {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
+                                    {
+                                        (confirmed.has("sentiment") || wasSavedByMe(rec, "sentiment")) && !rejected.has("sentiment") ? (
+                                            <>
+                                                {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                         <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                ✓ CONFIRMADO ANOTADOR
+                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                ✓ CONFIRMADO LLM
                                                             </div>
                                                             <div style={{ marginTop: 4 }}>
-                                                                valor: {sentLabel(rec.annotator_sentiment)}
+                                                                valor: {sentLabel(rec.sentiment_llm)}
                                                             </div>
-                                                            {rec.annotator_sentiment_reason && (
+                                                            {rec.justif_sentimiento && (
                                                                 <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                    Justificación: "{rec.annotator_sentiment_reason}"
+                                                                    Justificación: "{rec.justif_sentimiento}"
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1093,99 +1069,99 @@ return (
                                                         </button>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </>
-                                    ) : rejected.has("sentiment") ? (
-                                        <div style={{ marginTop: 8 }}>
-                                            <div style={S.formLabel}>Nuevo valor:</div>
-                                            <div style={S.sentBtns}>
-                                                {SENT_OPTS.map((opt) => (
-                                                    <button key={opt.v}
-                                                        style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
-                                                        onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
-                                                        <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <div style={S.formLabel}>Justificación:</div>
-                                            <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
-                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                        </div>
-                                    ) : (
-                                        <div style={S.gateBtns}>
-                                            <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                        </div>
-                                    )
-                                }
 
-                                {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
-                                <div style={{ ...S.sectionLabel, marginTop: 14 }}>Pilares de aceptación</div>
-                                <div style={S.fieldGrid}>
-                                    {PILARS.map((p) => {
-                                        const llmVal = (rec as any)[p.key] as number | undefined;
-                                        const pa = ann.pilars[p.key] ?? {};
-                                        const justif = (rec as any)[p.justifKey] as string | undefined;
-                                        const hasLlm = llmVal !== undefined && llmVal !== null;
-                                        const isConfirmed = (confirmed.has(p.key) || wasSavedByMe(rec, p.key)) && !rejected.has(p.key);
-                                        const isRejecting = rejected.has(p.key);
-                                        const pilarBtns = (sel: number | undefined, onPick: (v: number) => void) => (
-                                            <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-                                                {PILAR_BTNS.map((btn) => (
-                                                    <button key={btn.v}
-                                                        style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
-                                                        onClick={() => onPick(btn.v)}>
-                                                        {btn.l}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        );
-                                        return (
-                                            <div key={p.key} style={S.smallCard}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4, display: "flex", alignItems: "center" }}>
-                                                    {p.label} <HelpIcon fieldKey={p.key} />
-                                                </div>
-                                                <div style={S.iaTag}>Valor: {pilarLabel(llmVal)}</div>
-                                                {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
-
-                                                {isConfirmed ? (
-                                                    <>
-                                                        {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                                        <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                                <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                                        ✓ CONFIRMADO LLM
-                                                                    </div>
-                                                                    <div style={{ marginTop: 4 }}>
-                                                                        valor: {pilarLabel(llmVal)}
-                                                                    </div>
-                                                                    {justif && (
-                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                            Justificación: "{justif}"
-                                                                        </div>
-                                                                    )}
+                                                {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                {!confirmed.has("sentiment") && rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== rec.sentiment_llm && (
+                                                    <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                    ✓ CONFIRMADO ANOTADOR
                                                                 </div>
-                                                                <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
-                                                                    ↶ Deshacer
-                                                                </button>
+                                                                <div style={{ marginTop: 4 }}>
+                                                                    valor: {sentLabel(rec.annotator_sentiment)}
+                                                                </div>
+                                                                {rec.annotator_sentiment_reason && (
+                                                                    <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                        Justificación: "{rec.annotator_sentiment_reason}"
+                                                                    </div>
+                                                                )}
                                                             </div>
+                                                            <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                                ↶ Deshacer
+                                                            </button>
                                                         </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : rejected.has("sentiment") ? (
+                                            <div style={{ marginTop: 8 }}>
+                                                <div style={S.formLabel}>Nuevo valor:</div>
+                                                <div style={S.sentBtns}>
+                                                    {SENT_OPTS.map((opt) => (
+                                                        <button key={opt.v}
+                                                            style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
+                                                            onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
+                                                            <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div style={S.formLabel}>Justificación:</div>
+                                                <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
+                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+                                            </div>
+                                        ) : (
+                                            <div style={S.gateBtns}>
+                                                <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                            </div>
+                                        )
+                                    }
 
-                                                        {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                        {!confirmed.has(p.key) && (rec as any)[`annotator_${p.key}`] !== undefined && (rec as any)[`annotator_${p.key}`] !== llmVal && (
-                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                    {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 14 }}>Pilares de aceptación</div>
+                                    <div style={S.fieldGrid}>
+                                        {PILARS.map((p) => {
+                                            const llmVal = (rec as any)[p.key] as number | undefined;
+                                            const pa = ann.pilars[p.key] ?? {};
+                                            const justif = (rec as any)[p.justifKey] as string | undefined;
+                                            const hasLlm = llmVal !== undefined && llmVal !== null;
+                                            const isConfirmed = (confirmed.has(p.key) || wasSavedByMe(rec, p.key)) && !rejected.has(p.key);
+                                            const isRejecting = rejected.has(p.key);
+                                            const pilarBtns = (sel: number | undefined, onPick: (v: number) => void) => (
+                                                <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+                                                    {PILAR_BTNS.map((btn) => (
+                                                        <button key={btn.v}
+                                                            style={{ flex: 1, padding: "5px 2px", borderRadius: 5, border: `1.5px solid ${sel === btn.v ? p.color : "#252830"}`, fontSize: 11, fontWeight: 500, background: sel === btn.v ? p.color + "18" : "#181b22", color: sel === btn.v ? p.color : "#6b7080", cursor: "pointer" }}
+                                                            onClick={() => onPick(btn.v)}>
+                                                            {btn.l}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            );
+                                            return (
+                                                <div key={p.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: p.color, marginBottom: 4, display: "flex", alignItems: "center" }}>
+                                                        {p.label} <HelpIcon fieldKey={p.key} />
+                                                    </div>
+                                                    <div style={S.iaTag}>Valor: {pilarLabel(llmVal)}</div>
+                                                    {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
+
+                                                    {isConfirmed ? (
+                                                        <>
+                                                            {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
                                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                     <div style={{ flex: 1 }}>
-                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                            ✓ CONFIRMADO ANOTADOR
+                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                            ✓ CONFIRMADO LLM
                                                                         </div>
                                                                         <div style={{ marginTop: 4 }}>
-                                                                            valor: {pilarLabel((rec as any)[`annotator_${p.key}`])}
+                                                                            valor: {pilarLabel(llmVal)}
                                                                         </div>
-                                                                        {(rec as any)[`annotator_${p.key}_reason`] && (
+                                                                        {justif && (
                                                                             <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                                Justificación: "{(rec as any)[`annotator_${p.key}_reason`]}"
+                                                                                Justificación: "{justif}"
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1194,106 +1170,106 @@ return (
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                        )}
-                                                    </>
-                                                ) : isRejecting ? (
-                                                    <div style={{ marginTop: 8 }}>
-                                                        <div style={S.formLabel}>Nuevo valor:</div>
-                                                        {pilarBtns(pa.value, (v) => setPilar(rec.id, p.key, { value: v }))}
-                                                        <div style={S.formLabel}>Justificación:</div>
-                                                        <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
-                                                        <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, p.key)} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                                    </div>
-                                                ) : (
-                                                    <div style={S.gateBtns}>
-                                                        <button style={S.confirmBtn} onClick={() => confirmPilar(rec.id, p.key)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                                        <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, p.key)}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
 
-                                {/* ── 5. IDIOMA Y GEOLOCALIZACIÓN ───────────────────────────── */}
-                                <div style={{ ...S.sectionLabel, marginTop: 14 }}>Idioma y geolocalización</div>
-                                <div style={S.fieldGrid}>
-                                    {GEO_FIELDS.map((f) => {
-                                        const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
-                                        const fa = ann.fields[f.key] ?? {};
-                                        const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
-                                        const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
-                                        const isRejecting = rejected.has(f.key);
-                                        const valueInput = (val: string, onChange: (v: string) => void) =>
-                                            f.key === "world_continent" ? (
-                                                <>
-                                                    <input list={`continents-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
-                                                    <datalist id={`continents-${rec.id}`}>
-                                                        {CONTINENT_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
-                                                    </datalist>
-                                                </>
-                                            ) : f.key === "world_country" ? (
-                                                <>
-                                                    <input list={`countries-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
-                                                    <datalist id={`countries-${rec.id}`}>
-                                                        {COUNTRIES_RAW.map((c: any) => <option key={c.iso2} value={c.iso2}>{c.iso2} — {c.aliases[0]}</option>)}
-                                                    </datalist>
-                                                </>
-                                            ) : f.key === "lang" ? (
-                                                <>
-                                                    <input list={`langs-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
-                                                    <datalist id={`langs-${rec.id}`}>
-                                                        {LANGUAGES_RAW.map((l: any) => <option key={l.iso1} value={l.iso1}>{l.iso1} — {l.aliases[0]}</option>)}
-                                                    </datalist>
-                                                </>
-                                            ) : (
-                                                <input style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
-                                            );
-                                        return (
-                                            <div key={f.key} style={S.smallCard}>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: "#28bfb0", marginBottom: 4, display: "flex", alignItems: "center" }}>
-                                                    {f.label} <HelpIcon fieldKey={f.key} />
-                                                </div>
-                                                <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
-                                                {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
-                                                {isConfirmed ? (
-                                                    <>
-                                                        {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                                        <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                                <div style={{ flex: 1 }}>
-                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                                        ✓ CONFIRMADO LLM
-                                                                    </div>
-                                                                    <div style={{ marginTop: 4 }}>
-                                                                        valor: {(rec as any)[f.key] ?? "(sin valor)"}
-                                                                    </div>
-                                                                    {f.justifKey && (rec as any)[f.justifKey] && (
-                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                            Justificación: "{(rec as any)[f.justifKey]}"
+                                                            {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                            {!confirmed.has(p.key) && (rec as any)[`annotator_${p.key}`] !== undefined && (rec as any)[`annotator_${p.key}`] !== llmVal && (
+                                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                                ✓ CONFIRMADO ANOTADOR
+                                                                            </div>
+                                                                            <div style={{ marginTop: 4 }}>
+                                                                                valor: {pilarLabel((rec as any)[`annotator_${p.key}`])}
+                                                                            </div>
+                                                                            {(rec as any)[`annotator_${p.key}_reason`] && (
+                                                                                <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                                    Justificación: "{(rec as any)[`annotator_${p.key}_reason`]}"
+                                                                                </div>
+                                                                            )}
                                                                         </div>
-                                                                    )}
+                                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, p.key)}>
+                                                                            ↶ Deshacer
+                                                                        </button>
+                                                                    </div>
                                                                 </div>
-                                                                <button style={S.undoBtn} onClick={() => backToGate(rec.id, f.key)}>
-                                                                    ↶ Deshacer
-                                                                </button>
-                                                            </div>
+                                                            )}
+                                                        </>
+                                                    ) : isRejecting ? (
+                                                        <div style={{ marginTop: 8 }}>
+                                                            <div style={S.formLabel}>Nuevo valor:</div>
+                                                            {pilarBtns(pa.value, (v) => setPilar(rec.id, p.key, { value: v }))}
+                                                            <div style={S.formLabel}>Justificación:</div>
+                                                            <ReasonBox compact value={pa.reason} onChange={(v) => setPilar(rec.id, p.key, { reason: v })} />
+                                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, p.key)} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
                                                         </div>
+                                                    ) : (
+                                                        <div style={S.gateBtns}>
+                                                            <button style={S.confirmBtn} onClick={() => confirmPilar(rec.id, p.key)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, p.key)}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
 
-                                                        {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                        {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
-                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                    {/* ── 5. IDIOMA Y GEOLOCALIZACIÓN ───────────────────────────── */}
+                                    <div style={{ ...S.sectionLabel, marginTop: 14 }}>Idioma y geolocalización</div>
+                                    <div style={S.fieldGrid}>
+                                        {GEO_FIELDS.map((f) => {
+                                            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
+                                            const fa = ann.fields[f.key] ?? {};
+                                            const justif = f.justifKey ? ((rec as any)[f.justifKey] as string | undefined) : undefined;
+                                            const isConfirmed = (confirmed.has(f.key) || wasSavedByMe(rec, f.key)) && !rejected.has(f.key);
+                                            const isRejecting = rejected.has(f.key);
+                                            const valueInput = (val: string, onChange: (v: string) => void) =>
+                                                f.key === "world_continent" ? (
+                                                    <>
+                                                        <input list={`continents-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
+                                                        <datalist id={`continents-${rec.id}`}>
+                                                            {CONTINENT_OPTS.map((o) => <option key={o} value={o}>{o}</option>)}
+                                                        </datalist>
+                                                    </>
+                                                ) : f.key === "world_country" ? (
+                                                    <>
+                                                        <input list={`countries-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
+                                                        <datalist id={`countries-${rec.id}`}>
+                                                            {COUNTRIES_RAW.map((c: any) => <option key={c.iso2} value={c.iso2}>{c.iso2} — {c.aliases[0]}</option>)}
+                                                        </datalist>
+                                                    </>
+                                                ) : f.key === "lang" ? (
+                                                    <>
+                                                        <input list={`langs-${rec.id}`} style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
+                                                        <datalist id={`langs-${rec.id}`}>
+                                                            {LANGUAGES_RAW.map((l: any) => <option key={l.iso1} value={l.iso1}>{l.iso1} — {l.aliases[0]}</option>)}
+                                                        </datalist>
+                                                    </>
+                                                ) : (
+                                                    <input style={S.input} value={val} onChange={(e) => onChange(e.target.value)} />
+                                                );
+                                            return (
+                                                <div key={f.key} style={S.smallCard}>
+                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#28bfb0", marginBottom: 4, display: "flex", alignItems: "center" }}>
+                                                        {f.label} <HelpIcon fieldKey={f.key} />
+                                                    </div>
+                                                    <div style={S.iaTag}>Valor: {llmVal || "—"}</div>
+                                                    {justif && <div style={S.justifText}>Justificación: "{justif}"</div>}
+                                                    {isConfirmed ? (
+                                                        <>
+                                                            {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
                                                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                     <div style={{ flex: 1 }}>
-                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                            ✓ CONFIRMADO ANOTADOR
+                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                            ✓ CONFIRMADO LLM
                                                                         </div>
                                                                         <div style={{ marginTop: 4 }}>
-                                                                            valor: {(rec as any)[`annotator_${f.key}`]}
+                                                                            valor: {(rec as any)[f.key] ?? "(sin valor)"}
                                                                         </div>
-                                                                        {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                        {f.justifKey && (rec as any)[f.justifKey] && (
                                                                             <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                                Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                                Justificación: "{(rec as any)[f.justifKey]}"
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1302,57 +1278,80 @@ return (
                                                                     </button>
                                                                 </div>
                                                             </div>
-                                                        )}
-                                                    </>
 
-                                                ) : isRejecting ? (
-                                                    <div style={{ marginTop: 8 }}>
-                                                        <div style={S.formLabel}>Nuevo valor:</div>
-                                                        {valueInput(fa.value ?? "", (v) => setField(rec.id, f.key, { value: v }))}
-                                                        <div style={S.formLabel}>Justificación:</div>
-                                                        <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
-                                                        <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, f.key)} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                                    </div>
-                                                ) : (
-                                                    <div style={S.gateBtns}>
-                                                        <button style={S.confirmBtn} onClick={() => confirmField(rec.id, f.key)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                                        <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, f.key)}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                                            {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                            {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
+                                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                        <div style={{ flex: 1 }}>
+                                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                                ✓ CONFIRMADO ANOTADOR
+                                                                            </div>
+                                                                            <div style={{ marginTop: 4 }}>
+                                                                                valor: {(rec as any)[`annotator_${f.key}`]}
+                                                                            </div>
+                                                                            {(rec as any)[`annotator_${f.key}_reason`] && (
+                                                                                <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                                    Justificación: "{(rec as any)[`annotator_${f.key}_reason`]}"
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, f.key)}>
+                                                                            ↶ Deshacer
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
 
-                                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
-                                    <button style={S.saveBtn} onClick={() => handleSave(rec)} disabled={saving[rec.id]}>
-                                        {saving[rec.id] ? "Guardando..." : "Guardar y siguiente →"}
-                                    </button>
-                                </div>
-                            </>
-                        )
-                        }
+                                                    ) : isRejecting ? (
+                                                        <div style={{ marginTop: 8 }}>
+                                                            <div style={S.formLabel}>Nuevo valor:</div>
+                                                            {valueInput(fa.value ?? "", (v) => setField(rec.id, f.key, { value: v }))}
+                                                            <div style={S.formLabel}>Justificación:</div>
+                                                            <ReasonBox compact value={fa.reason} onChange={(v) => setField(rec.id, f.key, { reason: v })} />
+                                                            <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, f.key)} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+                                                        </div>
+                                                    ) : (
+                                                        <div style={S.gateBtns}>
+                                                            <button style={S.confirmBtn} onClick={() => confirmField(rec.id, f.key)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                            <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, f.key)}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                                        <button style={S.saveBtn} onClick={() => handleSave(rec)} disabled={saving[rec.id]}>
+                                            {saving[rec.id] ? "Guardando..." : "Guardar y siguiente →"}
+                                        </button>
+                                    </div>
+                                </>
+                            )
+                            }
+                        </div>
+                    );
+                })}
+
+                {total > LIMIT && (
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+                        <button style={S.pageBtn} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - LIMIT))}>← Anterior</button>
+                        <button style={S.pageBtn} disabled={offset + LIMIT >= total} onClick={() => setOffset(offset + LIMIT)}>Siguiente →</button>
                     </div>
-                );
-            })}
+                )}
+            </div>
 
-            {total > LIMIT && (
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
-                    <button style={S.pageBtn} disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - LIMIT))}>← Anterior</button>
-                    <button style={S.pageBtn} disabled={offset + LIMIT >= total} onClick={() => setOffset(offset + LIMIT)}>Siguiente →</button>
-                </div>
-            )}
-        </div>
-
-        {
-            toast && (
-                <div style={{ ...S.toast, color: toast.type === "warn" ? "#e8962a" : "#2ec27e" }}>
-                    {toast.type === "warn" ? "⚠ " : "✓ "}{toast.msg}
-                </div>
-            )
-        }
-    </div >
-);
+            {
+                toast && (
+                    <div style={{ ...S.toast, color: toast.type === "warn" ? "#e8962a" : "#2ec27e" }}>
+                        {toast.type === "warn" ? "⚠ " : "✓ "}{toast.msg}
+                    </div>
+                )
+            }
+        </div >
+    );
 }
 
 function ReasonBox({ value, onChange, compact }: { value?: string; onChange: (v: string) => void; compact?: boolean }) {
