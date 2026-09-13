@@ -669,15 +669,13 @@ export default function AnnotateView() {
         // (ni CONFIRMO ni NO CONFIRMO).
         const pending: string[] = [];
         for (const f of TEXT_FIELDS) {
-            const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
-            if (!confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
+            if (!confirmed.has(f.key) && !rejected.has(f.key) && !wasSavedByMe(rec, f.key)) pending.push(f.label);
         }
-        if (!confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
-        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment == null) pending.push("Sentimiento (topic)");
+        if (!confirmed.has("topic") && !rejected.has("topic") && !wasSavedByMe(rec, "topic")) pending.push("Tema / topic");
+        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && !wasSavedByMe(rec, "sentiment")) pending.push("Sentimiento (topic)");
         for (const p of PILARS) {
             const llmVal = (rec as any)[p.key] as number | undefined;
-            const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
-            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal == null) pending.push(p.label);
+            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && !wasSavedByMe(rec, p.key)) pending.push(p.label);
         }
         if (pending.length > 0) {
             showToast(`Faltan decisiones (CONFIRMO o NO CONFIRMO) en: ${pending.join(", ")}`, "warn");
@@ -967,153 +965,160 @@ export default function AnnotateView() {
                                     </div>
 
                                     {/* ── 2. TEMA / TOPIC ───────────────────────────────────────── */}
-                                    <div style={{ ...S.sectionLabel, marginTop: 12, display: "flex", alignItems: "center" }}>
-                                        Tema / topic <HelpIcon fieldKey="topic" />
-                                    </div>
-                                    <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
-                                    {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
-                                    {
-                                        (confirmed.has("topic") || wasSavedByMe(rec, "topic")) && !rejected.has("topic") ? (
-                                            <>
-                                                {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                                ✓ CONFIRMADO LLM
-                                                            </div>
-                                                            <div style={{ marginTop: 4 }}>
-                                                                valor: {rec.topic_llm ?? "(sin valor)"}
-                                                            </div>
-                                                            {rec.justif_topic && (
-                                                                <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                    Justificación: "{rec.justif_topic}"
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
-                                                            ↶ Deshacer
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {rec.annotator_topic && (rec.annotator_corrections ?? []).includes("topic") && (
-                                                    <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
-                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                            <div style={{ flex: 1 }}>
-                                                                <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                    ✓ CONFIRMADO ANOTADOR
-                                                                </div>
-                                                                <div style={{ marginTop: 4 }}>
-                                                                    valor: {rec.annotator_topic}
-                                                                </div>
-                                                                {rec.annotator_topic_reason && (
-                                                                    <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                        Justificación: "{rec.annotator_topic_reason}"
+                                    <div style={{ ...S.sectionLabel, marginTop: 12 }}>Tema y sentimiento</div>
+                                    <div style={S.fieldGrid}>
+                                        <div style={S.smallCard}>
+                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#e8962a", marginBottom: 4, display: "flex", alignItems: "center" }}>
+                                                Tema / topic <HelpIcon fieldKey="topic" />
+                                            </div>
+                                            <div style={S.iaTag}>Valor: {rec.topic_llm ?? "—"}</div>
+                                            {rec.justif_topic && <div style={S.justifText}>Justificación: "{rec.justif_topic}"</div>}
+                                            {
+                                                (confirmed.has("topic") || wasSavedByMe(rec, "topic")) && !rejected.has("topic") ? (
+                                                    <>
+                                                        {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                        <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                        ✓ CONFIRMADO LLM
                                                                     </div>
-                                                                )}
-                                                            </div>
-                                                            <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
-                                                                ↶ Deshacer
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </>
-                                        ) : rejected.has("topic") ? (
-                                            <div style={{ marginTop: 8 }}>
-                                                <div style={S.formLabel}>Nuevo valor:</div>
-                                                <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
-                                                <div style={S.formLabel}>Justificación:</div>
-                                                <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
-                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
-                                            </div>
-                                        ) : (
-                                            <div style={S.gateBtns}>
-                                                <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                            </div>
-                                        )
-                                    }
-
-                                    {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
-                                    <div style={{ ...S.sectionLabel, marginTop: 14, display: "flex", alignItems: "center" }}>
-                                        Sentimiento (topic) <HelpIcon fieldKey="sentiment" />
-                                    </div>
-                                    <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
-                                    {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
-                                    {
-                                        (confirmed.has("sentiment") || wasSavedByMe(rec, "sentiment")) && !rejected.has("sentiment") ? (
-                                            <>
-                                                {/* ✓ CONFIRMADO LLM (VERDE) */}
-                                                <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
-                                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
-                                                                ✓ CONFIRMADO LLM
-                                                            </div>
-                                                            <div style={{ marginTop: 4 }}>
-                                                                valor: {sentLabel(rec.sentiment_llm)}
-                                                            </div>
-                                                            {rec.justif_sentimiento && (
-                                                                <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                    Justificación: "{rec.justif_sentimiento}"
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
-                                                            ↶ Deshacer
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {rec.annotator_sentiment !== undefined && (rec.annotator_corrections ?? []).includes("sentiment") && (
-                                                    <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
-                                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                                                            <div style={{ flex: 1 }}>
-                                                                <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
-                                                                    ✓ CONFIRMADO ANOTADOR
-                                                                </div>
-                                                                <div style={{ marginTop: 4 }}>
-                                                                    valor: {sentLabel(rec.annotator_sentiment)}
-                                                                </div>
-                                                                {rec.annotator_sentiment_reason && (
-                                                                    <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
-                                                                        Justificación: "{rec.annotator_sentiment_reason}"
+                                                                    <div style={{ marginTop: 4 }}>
+                                                                        valor: {rec.topic_llm ?? "(sin valor)"}
                                                                     </div>
-                                                                )}
+                                                                    {rec.justif_topic && (
+                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                            Justificación: "{rec.justif_topic}"
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
+                                                                    ↶ Deshacer
+                                                                </button>
                                                             </div>
-                                                            <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
-                                                                ↶ Deshacer
-                                                            </button>
                                                         </div>
+                                                        {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                        {rec.annotator_topic && (rec.annotator_corrections ?? []).includes("topic") && (
+                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                    <div style={{ flex: 1 }}>
+                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                            ✓ CONFIRMADO ANOTADOR
+                                                                        </div>
+                                                                        <div style={{ marginTop: 4 }}>
+                                                                            valor: {rec.annotator_topic}
+                                                                        </div>
+                                                                        {rec.annotator_topic_reason && (
+                                                                            <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                                Justificación: "{rec.annotator_topic_reason}"
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "topic")}>
+                                                                        ↶ Deshacer
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : rejected.has("topic") ? (
+                                                    <div style={{ marginTop: 8 }}>
+                                                        <div style={S.formLabel}>Nuevo valor:</div>
+                                                        <input style={S.input} value={ann.topic ?? ""} onChange={(e) => setAnn(rec.id, { topic: e.target.value })} />
+                                                        <div style={S.formLabel}>Justificación:</div>
+                                                        <ReasonBox value={ann.topic_reason} onChange={(v) => setAnn(rec.id, { topic_reason: v })} />
+                                                        <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "topic")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
                                                     </div>
-                                                )}
-                                            </>
-                                        ) : rejected.has("sentiment") ? (
-                                            <div style={{ marginTop: 8 }}>
-                                                <div style={S.formLabel}>Nuevo valor:</div>
-                                                <div style={S.sentBtns}>
-                                                    {SENT_OPTS.map((opt) => (
-                                                        <button key={opt.v}
-                                                            style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
-                                                            onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
-                                                            <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                <div style={S.formLabel}>Justificación:</div>
-                                                <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
-                                                <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+                                                ) : (
+                                                    <div style={S.gateBtns}>
+                                                        <button style={S.confirmBtn} onClick={() => confirmTopic(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                        <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "topic")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                                    </div>
+                                                )
+                                            }
+                                        </div>
+
+                                        {/* ── 3. SENTIMIENTO (TOPIC) ─────────────────────────────────── */}
+                                        <div style={S.smallCard}>
+                                            <div style={{ fontSize: 10, fontWeight: 600, color: "#4e9eef", marginBottom: 4, display: "flex", alignItems: "center" }}>
+                                                Sentimiento (topic) <HelpIcon fieldKey="sentiment" />
                                             </div>
-                                        ) : (
-                                            <div style={S.gateBtns}>
-                                                <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
-                                                <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
-                                            </div>
-                                        )
-                                    }
+                                            <div style={S.iaTag}>Valor: {sentLabel(rec.sentiment_llm)}</div>
+                                            {rec.justif_sentimiento && <div style={S.justifText}>Justificación: "{rec.justif_sentimiento}"</div>}
+                                            {
+                                                (confirmed.has("sentiment") || wasSavedByMe(rec, "sentiment")) && !rejected.has("sentiment") ? (
+                                                    <>
+                                                        {/* ✓ CONFIRMADO LLM (VERDE) */}
+                                                        <div style={{ ...S.confirmedTag, borderLeft: "3px solid #2ec27e", marginBottom: 8 }}>
+                                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: "#2ec27e" }}>
+                                                                        ✓ CONFIRMADO LLM
+                                                                    </div>
+                                                                    <div style={{ marginTop: 4 }}>
+                                                                        valor: {sentLabel(rec.sentiment_llm)}
+                                                                    </div>
+                                                                    {rec.justif_sentimiento && (
+                                                                        <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                            Justificación: "{rec.justif_sentimiento}"
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                                    ↶ Deshacer
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
+                                                        {rec.annotator_sentiment !== undefined && (rec.annotator_corrections ?? []).includes("sentiment") && (
+                                                            <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
+                                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                                                                    <div style={{ flex: 1 }}>
+                                                                        <div style={{ fontSize: 10, fontWeight: 600, color: "#e05252" }}>
+                                                                            ✓ CONFIRMADO ANOTADOR
+                                                                        </div>
+                                                                        <div style={{ marginTop: 4 }}>
+                                                                            valor: {sentLabel(rec.annotator_sentiment)}
+                                                                        </div>
+                                                                        {rec.annotator_sentiment_reason && (
+                                                                            <div style={{ marginTop: 4, fontSize: 10, color: "#6b7080", fontStyle: "italic" }}>
+                                                                                Justificación: "{rec.annotator_sentiment_reason}"
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    <button style={S.undoBtn} onClick={() => backToGate(rec.id, "sentiment")}>
+                                                                        ↶ Deshacer
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : rejected.has("sentiment") ? (
+                                                    <div style={{ marginTop: 8 }}>
+                                                        <div style={S.formLabel}>Nuevo valor:</div>
+                                                        <div style={S.sentBtns}>
+                                                            {SENT_OPTS.map((opt) => (
+                                                                <button key={opt.v}
+                                                                    style={{ ...S.sentBtn, ...(ann.sentiment === opt.v ? { borderColor: opt.color, color: opt.color, background: opt.color + "18" } : {}) }}
+                                                                    onClick={() => setAnn(rec.id, { sentiment: opt.v })}>
+                                                                    <span style={{ display: "block", fontSize: 16 }}>{opt.icon}</span>{opt.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div style={S.formLabel}>Justificación:</div>
+                                                        <ReasonBox value={ann.sentiment_reason} onChange={(v) => setAnn(rec.id, { sentiment_reason: v })} />
+                                                        <button style={S.saveBtnSmall} onClick={() => handleSaveField(rec, "sentiment")} disabled={saving[rec.id]}>{saving[rec.id] ? "Guardando..." : "Guardar →"}</button>
+                                                    </div>
+                                                ) : (
+                                                    <div style={S.gateBtns}>
+                                                        <button style={S.confirmBtn} onClick={() => confirmSentiment(rec.id)}>✓ CONFIRMO / ESTOY DE ACUERDO</button>
+                                                        <button style={S.rejectBtn} onClick={() => markRejecting(rec.id, "sentiment")}>✕ NO CONFIRMO / NO ESTOY DE ACUERDO</button>
+                                                    </div>
+                                                )
+                                            }
+                                        </div>
+                                    </div>
 
                                     {/* ── 4. PILARES DE ACEPTACIÓN ──────────────────────────────── */}
                                     <div style={{ ...S.sectionLabel, marginTop: 14 }}>Pilares de aceptación</div>
