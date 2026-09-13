@@ -673,11 +673,11 @@ export default function AnnotateView() {
             if (!confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
         }
         if (!confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
-        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment === undefined) pending.push("Sentimiento (topic)");
+        if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment == null) pending.push("Sentimiento (topic)");
         for (const p of PILARS) {
             const llmVal = (rec as any)[p.key] as number | undefined;
             const annotatorVal = (rec as any)[`annotator_${p.key}`] as number | undefined;
-            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal === undefined) pending.push(p.label);
+            if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal == null) pending.push(p.label);
         }
         if (pending.length > 0) {
             showToast(`Faltan decisiones (CONFIRMO o NO CONFIRMO) en: ${pending.join(", ")}`, "warn");
