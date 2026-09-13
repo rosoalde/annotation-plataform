@@ -860,7 +860,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
+                                                            {(rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
@@ -1000,7 +1000,7 @@ export default function AnnotateView() {
                                                     </div>
                                                 </div>
                                                 {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {!confirmed.has("topic") && rec.annotator_topic && rec.annotator_topic !== rec.topic_llm && (
+                                                {rec.annotator_topic && rec.annotator_topic !== rec.topic_llm && (
                                                     <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                             <div style={{ flex: 1 }}>
@@ -1071,7 +1071,7 @@ export default function AnnotateView() {
                                                 </div>
 
                                                 {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                {!confirmed.has("sentiment") && rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== rec.sentiment_llm && (
+                                                {rec.annotator_sentiment !== undefined && rec.annotator_sentiment !== rec.sentiment_llm && (
                                                     <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                             <div style={{ flex: 1 }}>
@@ -1172,7 +1172,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {!confirmed.has(p.key) && (rec as any)[`annotator_${p.key}`] !== undefined && (rec as any)[`annotator_${p.key}`] !== llmVal && (
+                                                            {(rec as any)[`annotator_${p.key}`] !== undefined && (rec as any)[`annotator_${p.key}`] !== llmVal && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
@@ -1280,7 +1280,7 @@ export default function AnnotateView() {
                                                             </div>
 
                                                             {/* ✓ CONFIRMADO ANOTADOR (ROJO si es corrección) */}
-                                                            {!confirmed.has(f.key) && (rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
+                                                            {(rec as any)[`annotator_${f.key}`] && (rec as any)[`annotator_${f.key}`] !== ((rec as any)[f.key] ?? "") && (
                                                                 <div style={{ ...S.confirmedTag, borderLeft: "3px solid #e05252", background: "rgba(224,82,82,0.12)" }}>
                                                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                                                                         <div style={{ flex: 1 }}>
