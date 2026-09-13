@@ -57,11 +57,10 @@ async def list_records(
     total   = total_r.scalar() or 0
 
     ann_q = select(distinct(Annotation.record_id)).where(
-        Annotation.project_id   == project_id,
-        Annotation.annotator_id == current_user.id,
+        Annotation.project_id      == project_id,
+        Annotation.annotator_id    == current_user.id,
+        Annotation.annotation_type == "completion",
     )
-    if annotation_type:
-        ann_q = ann_q.where(Annotation.annotation_type == annotation_type)
 
     done_r   = await db.execute(ann_q)
     done_ids = {row[0] for row in done_r.all()}

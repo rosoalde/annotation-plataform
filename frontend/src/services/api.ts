@@ -122,6 +122,10 @@ export const annotationsApi = {
     saveField: (projectId: string, data: FieldAnnotationCreate) =>
         http.post<AnnotationResponse>(`/projects/${projectId}/annotations/field`, data).then((r) => r.data),
 
+    complete: (projectId: string, recordId: string) =>
+        http.post<AnnotationResponse>(`/projects/${projectId}/annotations/complete`, { record_id: recordId }).then((r) => r.data),
+
+
     decideKeyword: (projectId: string, keywordId: string, data: KeywordDecisionCreate) =>
         http.patch(`/projects/${projectId}/keywords/${keywordId}`, data).then((r) => r.data),
 

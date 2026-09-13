@@ -296,6 +296,13 @@ class FieldAnnotationCreate(BaseModel):
     is_correction: bool
     correction_reason: Optional[str] = None
 
+
+class CompleteRecordCreate(BaseModel):
+    # Marca que ESTE anotador ha terminado ESTE registro (botón "Guardar y
+    # siguiente"). Es lo único que debe sacar el registro de su cola de
+    # pendientes; guardar campos sueltos (CONFIRMO o NO CONFIRMO) no lo hace.
+    record_id: str
+
 class ProjectUpdate(BaseModel):
     name: Optional[str] = None
     tema: Optional[str] = None

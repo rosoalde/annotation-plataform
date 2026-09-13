@@ -16,7 +16,7 @@ from backend.app.core.security import get_current_user, require_role
 from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
 from backend.app.schemas.schemas import (
     SentimentAnnotationCreate, PilarAnnotationCreate, KeywordDecisionCreate,
-    AnnotationResponse, FieldAnnotationCreate
+    AnnotationResponse, FieldAnnotationCreate, CompleteRecordCreate
 )
 
 router = APIRouter(tags=["annotations"])
@@ -155,7 +155,32 @@ async def save_field(
                                is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
 
 
+@router.post("/{project_id}/annotations/complete", response_model=AnnotationResponse)
+async def complete_record(
+    project_id: str,
+    body: CompleteRecordCreate,
+    db: AsyncSession   = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Marca que el anotador actual ha terminado este registro (botón
+    "Guardar y siguiente"). Es la ÚNICA acción que debe sacar el registro
+    de su cola de pendientes — guardar campos sueltos no debe hacerlo.
+    """
+    ann = Annotation(
+        record_id=body.record_id, project_id=project_id, annotator_id=current_user.id,
+        annotation_type="completion", is_correction=False,
+    )
+    db.add(ann)
+    await _release_lock(db, body.record_id, current_user.id)
+    await db.commit()
+    await db.refresh(ann)
+    return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
+                               is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
+
+
 @router.patch("/{project_id}/keywords/{keyword_id}")
+
 async def decide_keyword(
     project_id: str, keyword_id: str,
     body: KeywordDecisionCreate,
