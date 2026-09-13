@@ -669,11 +669,10 @@ export default function AnnotateView() {
         // (ni CONFIRMO ni NO CONFIRMO).
         const pending: string[] = [];
         for (const f of TEXT_FIELDS) {
-            const llmVal = ((rec as any)[f.key] as string | undefined) ?? "";
             const annotatorVal = (rec as any)[`annotator_${f.key}`] as string | undefined;
-            if (llmVal && !confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
+            if (!confirmed.has(f.key) && !rejected.has(f.key) && !annotatorVal) pending.push(f.label);
         }
-        if (rec.topic_llm && !confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
+        if (!confirmed.has("topic") && !rejected.has("topic") && !rec.annotator_topic) pending.push("Tema / topic");
         if (rec.sentiment_llm !== undefined && rec.sentiment_llm !== null && !confirmed.has("sentiment") && !rejected.has("sentiment") && rec.annotator_sentiment === undefined) pending.push("Sentimiento (topic)");
         for (const p of PILARS) {
             const llmVal = (rec as any)[p.key] as number | undefined;
@@ -681,10 +680,8 @@ export default function AnnotateView() {
             if (llmVal !== undefined && llmVal !== null && !confirmed.has(p.key) && !rejected.has(p.key) && annotatorVal === undefined) pending.push(p.label);
         }
         if (pending.length > 0) {
-            const ok = window.confirm(
-                `⚠ Los siguientes campos no tienen decisión (ni CONFIRMO ni NO CONFIRMO):\n\n${pending.join(", ")}\n\n¿Guardar igualmente?`
-            );
-            if (!ok) return;
+            showToast(`Faltan decisiones (CONFIRMO o NO CONFIRMO) en: ${pending.join(", ")}`, "warn");
+            return;
         }
 
         // Campos marcados NO CONFIRMO: exigir valor Y justificación propios.
