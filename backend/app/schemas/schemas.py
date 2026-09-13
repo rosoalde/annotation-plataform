@@ -166,6 +166,13 @@ class RecordOut(BaseModel):
     annotator_justicia_equidad_reason: Optional[str] = None
     annotator_confianza_institucional: Optional[int] = None
     annotator_confianza_institucional_reason: Optional[str] = None
+    # Claves (mismos nombres que field_name/pilar/"topic"/"sentiment") cuya
+    # última decisión de ESTE anotador fue una corrección real (NO CONFIRMO),
+    # a diferencia de una confirmación (CONFIRMO) — que también deja
+    # annotator_* relleno, pero con el mismo valor que el LLM. Sin esto no
+    # se puede distinguir "confirmó" de "corrigió solo la justificación
+    # dejando el mismo valor" comparando valores.
+    annotator_corrections: List[str] = []
 
     status: str
     locked_by_other: bool = False

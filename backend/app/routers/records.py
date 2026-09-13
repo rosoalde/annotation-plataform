@@ -143,16 +143,19 @@ async def list_records(
             "confianza_institucional": None,
             "confianza_institucional_reason": None,
         }
+        corrections: set = set()
 
         for a in user_annotations:
             if a.annotation_type == "sentiment":
                 if a.corrected_sentiment is not None:
                     annotator["sentiment"] = a.corrected_sentiment
+                    (corrections.add if a.is_correction else corrections.discard)("sentiment")
                 if a.correction_reason:
                     annotator["sentiment_reason"] = a.correction_reason
 
                 if a.corrected_topic is not None:
                     annotator["topic"] = a.corrected_topic
+                    (corrections.add if a.is_correction else corrections.discard)("topic")
                 if a.topic_reason:
                     annotator["topic_reason"] = a.topic_reason
 
@@ -165,6 +168,7 @@ async def list_records(
                 }:
                     annotator[a.pilar] = a.corrected_value
                     annotator[f"{a.pilar}_reason"] = a.correction_reason
+                    (corrections.add if a.is_correction else corrections.discard)(a.pilar)
 
             elif a.annotation_type == "field":
                 field = a.field_name
@@ -183,6 +187,7 @@ async def list_records(
                     target = field_map[field]
                     annotator[target] = a.corrected_text
                     annotator[f"{target}_reason"] = a.correction_reason
+                    (corrections.add if a.is_correction else corrections.discard)(target)
         out.append(RecordOut(
             id=rec.id, external_id=rec.external_id, content=rec.content,
             platform=rec.platform, tipo=rec.tipo, fecha=rec.fecha,
@@ -238,8 +243,9 @@ async def list_records(
             annotator_efectividad_reason=annotator["efectividad_reason"],
             annotator_justicia_equidad=annotator["justicia_equidad"],
             annotator_justicia_equidad_reason=annotator["justicia_equidad_reason"],
-            annotator_confianza_institucional=annotator["confianza_institucional"],
+                        annotator_confianza_institucional=annotator["confianza_institucional"],
             annotator_confianza_institucional_reason=annotator["confianza_institucional_reason"],
+            annotator_corrections=sorted(corrections),
             status=rec.status, locked_by_other=locked_by_other, locked_until=locked_until,
         ))
 

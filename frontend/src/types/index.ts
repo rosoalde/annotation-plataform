@@ -137,6 +137,7 @@ export interface Record {
     annotator_justicia_equidad_reason?: string;
     annotator_confianza_institucional?: number;
     annotator_confianza_institucional_reason?: string;
+    annotator_corrections?: string[];
     // codigo_pais?: string;
     status: RecordStatus;
     locked_by_other: boolean;
