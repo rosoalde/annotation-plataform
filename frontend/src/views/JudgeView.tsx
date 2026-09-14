@@ -378,21 +378,51 @@ export default function JudgeView() {
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
     const handleSaveAll = async (record: typeof data[0]["record"]) => {
+        const recAnns = data?.find(d => d.record.id === record.id)?.annotations ?? [];
+        const fieldAnns = recAnns.filter(a => a.annotation_type === "field");
+        const sentAnns = recAnns.filter(a => a.annotation_type === "sentiment");
+        const pilarAnns = recAnns.filter(a => a.annotation_type === "pilar");
+
+        // Todo campo necesita una decisión del juez — ya guardada de antes,
+        // o con un borrador listo para guardarse ahora mismo — igual que
+        // exige la pestaña de Anotar antes de "Guardar y siguiente".
+        const pending: string[] = [];
+        for (const { key: fieldKey, label } of TEXT_FIELDS) {
+            const jKey = `${record.id}__field__${fieldKey}`;
+            const hasSaved = fieldAnns.some(a => a.field_name === fieldKey && a.judge_final_text != null);
+            if (!hasSaved && judgeFields[jKey] === undefined) pending.push(label);
+        }
+        const topicKey = `${record.id}__topic`;
+        const topicSaved = fieldAnns.some(a => a.field_name === "topic" && a.judge_final_text != null);
+        if (!topicSaved && judgeFields[topicKey] === undefined) pending.push("Tema / Topic");
+
+        const sentKey = `${record.id}__sentiment`;
+        const sentSaved = sentAnns.some(a => a.judge_final_value != null);
+        if (!sentSaved && judgeFields[sentKey] === undefined) pending.push("Sentimiento (topic)");
+
+        for (const [pilarKey, pilarLabel] of Object.entries(PILAR_LABELS)) {
+            const jKey = `${record.id}__${pilarKey}`;
+            const hasSaved = pilarAnns.some(a => a.pilar === pilarKey && a.judge_final_value != null);
+            if (!hasSaved && judgeFields[jKey] === undefined) pending.push(pilarLabel);
+        }
+
+        if (pending.length > 0) {
+            showToast(`Faltan decisiones del juez en: ${pending.join(", ")}`, false);
+            return;
+        }
+
         // Guardar todos los campos que tienen draft en judgeFields para este record
         const saves: Promise<any>[] = [];
-        const recAnns = data?.find(d => d.record.id === record.id)?.annotations ?? [];
 
         // Sentimiento
-        const sentKey = `${record.id}__sentiment`;
         if (judgeFields[sentKey] !== undefined) {
             const reason = (judgeFields[`${sentKey}_reason`] as string) || undefined;
             saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: judgeFields[sentKey] as number, reason, source: adoptedFrom[sentKey] ?? "new" }));
         }
 
         // Topic
-        const topicKey = `${record.id}__topic`;
         const topicDraft = judgeFields[topicKey] as string | undefined;
-        if (topicDraft) {
+        if (topicDraft !== undefined) {
             const reason = (judgeFields[`${topicKey}__reason`] as string) || undefined;
             saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: topicDraft, reason, source: adoptedFrom[topicKey] ?? "new" }));
         }
@@ -401,7 +431,7 @@ export default function JudgeView() {
         for (const { key: fieldKey } of TEXT_FIELDS) {
             const jKey = `${record.id}__field__${fieldKey}`;
             const draft = judgeFields[jKey] as string | undefined;
-            if (draft) {
+            if (draft !== undefined) {
                 const reason = (judgeFields[`${jKey}__reason`] as string) || undefined;
                 saves.push(judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: draft, reason, source: adoptedFrom[jKey] ?? "new" }));
             }
