@@ -90,10 +90,11 @@ function TextFieldGroup({
     savedValue?: string; savedReason?: string; savedSource?: string;
     onSave: (finalText: string, reason: string | undefined, source: string) => Promise<unknown>;
 }) {
+    const isDismissed = judgeFields[`${jKey}__dismissed`] === true;
     const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates];
-    const selectedSource = adoptedFrom[jKey] ?? savedSource;
-    const displayValue = (judgeFields[jKey] as string) ?? savedValue;
-    const displayReason = (judgeFields[`${jKey}__reason`] as string) ?? savedReason;
+    const selectedSource = isDismissed ? undefined : (adoptedFrom[jKey] ?? savedSource);
+    const displayValue = isDismissed ? undefined : ((judgeFields[jKey] as string) ?? savedValue);
+    const displayReason = isDismissed ? undefined : ((judgeFields[`${jKey}__reason`] as string) ?? savedReason);
     const isDeciding = judgeFields[`${jKey}__deciding`] === true;
     const isSaving = judgeFields[`${jKey}__saving`] === true;
     const isResolved = !isDeciding && selectedSource !== undefined && displayValue !== undefined;
@@ -110,7 +111,7 @@ function TextFieldGroup({
         setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
         try {
             await onSave((c.value as string) ?? "", c.justif, c.id);
-            setJudgeFields(p => ({ ...p, [jKey]: c.value ?? "", [`${jKey}__reason`]: c.justif ?? "" }));
+            setJudgeFields(p => { const n = { ...p, [jKey]: c.value ?? "", [`${jKey}__reason`]: c.justif ?? "" }; delete n[`${jKey}__dismissed`]; return n; });
             setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
             clearLocal();
         } catch { clearLocal(); }
@@ -120,7 +121,7 @@ function TextFieldGroup({
         setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
         try {
             await onSave(draft, draftReason || undefined, "new");
-            setJudgeFields(p => ({ ...p, [jKey]: draft, [`${jKey}__reason`]: draftReason, [`${jKey}__draft`]: undefined, [`${jKey}__draftReason`]: undefined }));
+            setJudgeFields(p => { const n = { ...p, [jKey]: draft, [`${jKey}__reason`]: draftReason }; delete n[`${jKey}__draft`]; delete n[`${jKey}__draftReason`]; delete n[`${jKey}__dismissed`]; return n; });
             setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
             clearLocal();
         } catch { clearLocal(); }
@@ -136,7 +137,7 @@ function TextFieldGroup({
                     {displayReason && <div style={S.candJustif}>Justificación: "{displayReason}"</div>}
                     <button style={S.undoLink} onClick={() => {
                         setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; });
-                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                        setJudgeFields(p => ({ ...p, [jKey]: undefined, [`${jKey}__reason`]: undefined, [`${jKey}__dismissed`]: true }));
                     }}>↶ Deshacer</button>
                 </div>
             ) : isDeciding ? (
@@ -187,63 +188,89 @@ function PickerFieldGroup({
     savedSource?: string;
     onSave: (finalValue: number, reason: string | undefined, source: string) => Promise<unknown>;
 }) {
-    const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates, { id: "new", icon: "✕", label: "Ninguna es correcta" }];
-    const selected = adoptedFrom[jKey];
-    const draftValue = (judgeFields[jKey] as number | undefined) ?? savedValue;
-    const draftReason = (judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? "";
-    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
+    const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates];
+    const isDismissed = judgeFields[`${jKey}__dismissed`] === true;
+    const selectedSource = isDismissed ? undefined : (adoptedFrom[jKey] ?? savedSource);
+    const displayValue = isDismissed ? undefined : ((judgeFields[jKey] as number | undefined) ?? savedValue);
+    const displayReason = isDismissed ? undefined : ((judgeFields[`${jKey}__reason`] as string) ?? savedReason);
+    const isDeciding = judgeFields[`${jKey}__deciding`] === true;
+    const isSaving = judgeFields[`${jKey}__saving`] === true;
+    const isResolved = !isDeciding && selectedSource !== undefined && displayValue !== undefined;
+    const draft = judgeFields[`${jKey}__draft`] as number | undefined;
+    const draftReason = (judgeFields[`${jKey}__draftReason`] as string) ?? "";
+
+    const clearLocal = () => setJudgeFields(p => {
+        const n = { ...p };
+        delete n[`${jKey}__saving`]; delete n[`${jKey}__deciding`];
+        return n;
+    });
+
+    const accept = async (c: Candidate) => {
+        setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
+        try {
+            await onSave(c.value as number, c.justif, c.id);
+            setJudgeFields(p => { const n = { ...p, [jKey]: c.value as number, [`${jKey}__reason`]: c.justif ?? "" }; delete n[`${jKey}__dismissed`]; return n; });
+            setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
+            clearLocal();
+        } catch { clearLocal(); }
+    };
+
+    const saveManual = async () => {
+        if (draft === undefined) return;
+        setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
+        try {
+            await onSave(draft, draftReason || undefined, "new");
+            setJudgeFields(p => { const n = { ...p, [jKey]: draft, [`${jKey}__reason`]: draftReason }; delete n[`${jKey}__draft`]; delete n[`${jKey}__draftReason`]; delete n[`${jKey}__dismissed`]; return n; });
+            setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
+            clearLocal();
+        } catch { clearLocal(); }
+    };
 
     return (
         <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 9, fontWeight: 600, color: accent, marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em", display: "flex", alignItems: "center" }}>{label}{helpKey && <HelpIcon fieldKey={helpKey} />}</div>
-            <JudgeCandidates
-                candidates={candidates}
-                selectedId={selected}
-                formatValue={formatValue}
-                onPick={(c) => {
-                    if (c.id === "new") {
-                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; delete n[`${jKey}__saved`]; return n; });
-                        setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
-                        return;
-                    }
-                    setJudgeFields(p => ({ ...p, [jKey]: c.value as number, [`${jKey}__reason`]: c.justif ?? "", [`${jKey}__saved`]: undefined }));
-                    setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
-                }}
-            />
-            <div style={S.finalLabel}>Decisión final del juez:</div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const, marginBottom: 6 }}>
-                {options.map(opt => {
-                    const sel = draftValue === opt.v;
-                    const c = opt.color ?? accent;
-                    return (
-                        <button key={opt.v} type="button"
-                            style={{ flex: 1, minWidth: 60, padding: "6px 4px", borderRadius: "var(--r)", border: `1.5px solid ${sel ? c : "var(--border)"}`, fontSize: 11, fontWeight: 500, background: sel ? c + "18" : "var(--card)", color: sel ? c : "var(--muted)", cursor: "pointer", textAlign: "center" as const }}
-                            onClick={() => { setJudgeFields(p => ({ ...p, [jKey]: opt.v, [`${jKey}__saved`]: undefined })); setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; }); }}>
-                            {opt.icon} {opt.label}
-                        </button>
-                    );
-                })}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-                <input style={{ ...S.finalInput, fontSize: 10 }} placeholder="Justificación de tu asignación..." value={draftReason}
-                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value, [`${jKey}__saved`]: undefined }))} />
-                <button disabled={!isDirty || draftValue === undefined}
-                    onClick={async () => {
-                        if (draftValue === undefined) return;
-                        try {
-                            await onSave(draftValue, draftReason || undefined, selected ?? "new");
-                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
-                        } catch { }
-                    }}
-                    style={{ ...S.saveBtn, ...(isDirty ? {} : S.saveBtnOff) }}>
-                    Guardar →
-                </button>
-            </div>
-            {((judgeFields[`${jKey}__saved`] === true) || (savedValue !== undefined && judgeFields[jKey] === undefined)) && (
+            {isResolved ? (
                 <div style={S.savedTag}>
-                    ✓ Guardado{sourceLabel(savedSource ?? selected) ? ` · adoptado de ${sourceLabel(savedSource ?? selected)}` : ""}
-                    <button style={S.undoLink} onClick={() => setJudgeFields(p => { const n = { ...p }; delete n[`${jKey}__saved`]; return n; })}>cambiar</button>
+                    <strong>✓ ACEPTADA — {sourceTag(selectedSource)}</strong>
+                    <div>Valor: {formatValue(displayValue)}</div>
+                    {displayReason && <div style={S.candJustif}>Justificación: "{displayReason}"</div>}
+                    <button style={S.undoLink} onClick={() => {
+                        setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; });
+                        setJudgeFields(p => ({ ...p, [jKey]: undefined, [`${jKey}__reason`]: undefined, [`${jKey}__dismissed`]: true }));
+                    }}>↶ Deshacer</button>
                 </div>
+            ) : isDeciding ? (
+                <div>
+                    <div style={S.finalLabel}>Nuevo valor:</div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" as const, marginBottom: 6 }}>
+                        {options.map(opt => {
+                            const sel = draft === opt.v;
+                            const c = opt.color ?? accent;
+                            return (
+                                <button key={opt.v} type="button"
+                                    style={{ flex: 1, minWidth: 60, padding: "6px 4px", borderRadius: "var(--r)", border: `1.5px solid ${sel ? c : "var(--border)"}`, fontSize: 11, fontWeight: 500, background: sel ? c + "18" : "var(--card)", color: sel ? c : "var(--muted)", cursor: "pointer", textAlign: "center" as const }}
+                                    onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__draft`]: opt.v }))}>
+                                    {opt.icon} {opt.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <div style={S.finalLabel}>Nueva justificación:</div>
+                    <input style={{ ...S.finalInput, fontSize: 10 }} value={draftReason}
+                        onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__draftReason`]: e.target.value }))} />
+                    <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
+                        <button disabled={isSaving || draft === undefined || !draftReason} onClick={saveManual}
+                            style={{ ...S.saveBtn, ...((isSaving || draft === undefined || !draftReason) ? S.saveBtnOff : {}) }}>Guardar →</button>
+                        <button style={S.undoLink} onClick={() => setJudgeFields(p => { const n = { ...p }; delete n[`${jKey}__deciding`]; return n; })}>↶ Deshacer</button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <JudgeCandidates candidates={candidates} onPick={accept} formatValue={formatValue} disabled={isSaving} />
+                    <button style={S.rejectAllBtn} disabled={isSaving} onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__deciding`]: true }))}>
+                        ✕ NINGUNA ES CORRECTA
+                    </button>
+                </>
             )}
         </div>
     );
