@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, distinct
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_db
@@ -21,8 +21,13 @@ async def judge_records(
     db: AsyncSession                = Depends(get_db),
     current_user: User              = Depends(require_role("judge", "admin")),
 ):
+    completed_ids_sq = (
+        select(distinct(Annotation.record_id))
+        .where(Annotation.project_id == project_id, Annotation.annotation_type == "completion")
+        .scalar_subquery()
+    )
     rec_result = await db.execute(
-        select(Record).where(Record.project_id == project_id, Record.status.in_(["annotated", "annotated_partial", "judged"]))
+        select(Record).where(Record.project_id == project_id, Record.id.in_(completed_ids_sq))
         .offset(offset).limit(limit)
     )
     records = rec_result.scalars().all()
@@ -36,11 +41,25 @@ async def judge_records(
                 Annotation.record_id == rec.id,
                 Annotation.annotation_type.in_(["sentiment", "pilar", "field"]),
             )
+            .order_by(Annotation.created_at.asc())
         )
         if annotation_type:
             ann_q = ann_q.where(Annotation.annotation_type == annotation_type)
         ann_r = await db.execute(ann_q)
-        anns  = ann_r.scalars().all()
+        all_anns = ann_r.scalars().all()
+
+        # Nos quedamos solo con la anotación MÁS RECIENTE de cada anotador
+        # por campo. Guardar un campo suelto crea una fila nueva cada vez
+        # (histórico, nunca se sobrescribe), así que sin esto el juez ve
+        # varias filas del mismo anotador para el mismo campo.
+        latest: dict = {}
+        for a in all_anns:
+            dedup_key = (
+                a.annotator_id, a.annotation_type,
+                a.pilar if a.annotation_type == "pilar" else a.field_name if a.annotation_type == "field" else None,
+            )
+            latest[dedup_key] = a   # orden ascendente → la última sobrescribe
+        anns = list(latest.values())
 
         ann_out = [
             JudgeAnnotationOut(
