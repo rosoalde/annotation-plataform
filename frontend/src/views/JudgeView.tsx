@@ -27,8 +27,13 @@ const S: Record<string, React.CSSProperties> = {
     finalInput: { flex: 1, minWidth: 140, background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "5px 8px", fontSize: 11, fontFamily: "inherit" },
     saveBtn: { padding: "5px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" },
     saveBtnOff: { background: "var(--border)", cursor: "default" as const },
-    savedTag: { fontSize: 10, color: "var(--green)", marginTop: 5, display: "flex", alignItems: "center", gap: 8 },
-    undoLink: { fontSize: 9, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" as const },
+    savedTag: { fontSize: 11, color: "var(--green)", marginTop: 5, background: "rgba(46,194,126,0.08)", border: "1px solid var(--green)", borderRadius: "var(--r)", padding: "8px 10px" },
+    undoLink: { fontSize: 9, color: "var(--muted)", background: "transparent", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" as const, marginTop: 4, display: "block" },
+    altBlock: { border: "1px solid var(--border)", borderRadius: "var(--r)", overflow: "hidden", marginBottom: 6 },
+    altQuestion: { fontSize: 10, color: "var(--muted)", padding: "7px 10px", background: "var(--bg)" },
+    altRow: { display: "block", width: "100%", textAlign: "left" as const, background: "var(--card)", border: "none", borderTop: "1px solid var(--border)", padding: "8px 10px", cursor: "pointer", fontFamily: "inherit", color: "inherit" },
+    altRowDisabled: { cursor: "default" as const, opacity: 0.6 },
+    rejectAllBtn: { width: "100%", textAlign: "center" as const, padding: "6px 10px", borderRadius: "var(--r)", border: "1.5px dashed var(--border2)", background: "transparent", color: "var(--muted)", fontSize: 10, fontWeight: 600, cursor: "pointer", marginBottom: 8 },
 };
 
 const SENT_OPTS = [
@@ -44,35 +49,25 @@ const SENT_OPTS = [
 // patrón CONFIRMO/NO CONFIRMO de AnnotateView.tsx (mismo verde = elegido).
 type Candidate = { id: string; icon: string; label: string; value?: string | number; justif?: string };
 
-const sourceLabel = (id?: string) =>
-    !id ? undefined : id === "llm" ? "LLM" : id === "new" ? "el juez (asignación propia)" : `el anotador @${id}`;
+const sourceTag = (id?: string) => id === "llm" ? "LLM" : (id === "new" || !id) ? "JUEZ" : `ANOTADOR (@${id})`;
 
-function JudgeCandidates({ candidates, selectedId, onPick, formatValue }: {
+function JudgeCandidates({ candidates, onPick, formatValue, disabled }: {
     candidates: Candidate[];
-    selectedId?: string;
     onPick: (c: Candidate) => void;
     formatValue?: (v?: string | number) => string;
+    disabled?: boolean;
 }) {
     return (
-        <div style={S.candRow}>
-            {candidates.map((c) => {
-                const isNew = c.id === "new";
-                const active = selectedId === c.id;
-                return (
-                    <button key={c.id} type="button" onClick={() => onPick(c)}
-                        style={{ ...S.candCard, ...(active ? S.candCardActive : isNew ? S.candCardNew : {}) }}>
-                        <div style={S.candHead}>{c.icon} {c.label}</div>
-                        {isNew ? (
-                            <div style={{ ...S.candValue, color: "var(--muted)", fontWeight: 400 }}>Escribir la mía (ninguna es correcta)</div>
-                        ) : (
-                            <>
-                                <div style={S.candValue}>{formatValue ? formatValue(c.value) : (c.value ?? "—")}</div>
-                                {c.justif && <div style={S.candJustif}>{c.justif}</div>}
-                            </>
-                        )}
-                    </button>
-                );
-            })}
+        <div style={S.altBlock}>
+            <div style={S.altQuestion}>¿Alguna de las siguientes anotaciones es correcta?</div>
+            {candidates.map((c) => (
+                <button key={c.id} type="button" disabled={disabled} onClick={() => onPick(c)}
+                    style={{ ...S.altRow, ...(disabled ? S.altRowDisabled : {}) }}>
+                    <div style={S.candHead}>{c.icon} {c.label}</div>
+                    <div style={S.candValue}>{formatValue ? formatValue(c.value) : (c.value || "—")}</div>
+                    {c.justif && <div style={S.candJustif}>"{c.justif}"</div>}
+                </button>
+            ))}
         </div>
     );
 }
@@ -86,65 +81,83 @@ function TextFieldGroup({
     judgeFields, setJudgeFields, adoptedFrom, setAdoptedFrom,
     savedValue, savedReason, savedSource, onSave,
 }: {
-    label: string;
-    helpKey?: string;
-    accent: string;
-    jKey: string;
-    llmCandidate: Candidate;
-    annotatorCandidates: Candidate[];
+    label: string; helpKey?: string; accent: string; jKey: string;
+    llmCandidate: Candidate; annotatorCandidates: Candidate[];
     judgeFields: Record<string, string | number | boolean | undefined>;
     setJudgeFields: React.Dispatch<React.SetStateAction<Record<string, string | number | boolean | undefined>>>;
     adoptedFrom: Record<string, string>;
     setAdoptedFrom: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-    savedValue?: string;
-    savedReason?: string;
-    savedSource?: string;
+    savedValue?: string; savedReason?: string; savedSource?: string;
     onSave: (finalText: string, reason: string | undefined, source: string) => Promise<unknown>;
 }) {
-    const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates, { id: "new", icon: "✕", label: "Ninguna es correcta" }];
-    const selected = adoptedFrom[jKey];
-    const draft = (judgeFields[jKey] as string) ?? savedValue ?? "";
-    const draftReason = (judgeFields[`${jKey}__reason`] as string) ?? savedReason ?? "";
-    const isDirty = (judgeFields[jKey] !== undefined || judgeFields[`${jKey}__reason`] !== undefined) && !judgeFields[`${jKey}__saved`];
+    const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates];
+    const selectedSource = adoptedFrom[jKey] ?? savedSource;
+    const displayValue = (judgeFields[jKey] as string) ?? savedValue;
+    const displayReason = (judgeFields[`${jKey}__reason`] as string) ?? savedReason;
+    const isDeciding = judgeFields[`${jKey}__deciding`] === true;
+    const isSaving = judgeFields[`${jKey}__saving`] === true;
+    const isResolved = !isDeciding && selectedSource !== undefined && displayValue !== undefined;
+    const draft = (judgeFields[`${jKey}__draft`] as string) ?? "";
+    const draftReason = (judgeFields[`${jKey}__draftReason`] as string) ?? "";
+
+    const clearLocal = () => setJudgeFields(p => {
+        const n = { ...p };
+        delete n[`${jKey}__saving`]; delete n[`${jKey}__deciding`];
+        return n;
+    });
+
+    const accept = async (c: Candidate) => {
+        setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
+        try {
+            await onSave((c.value as string) ?? "", c.justif, c.id);
+            setJudgeFields(p => ({ ...p, [jKey]: c.value ?? "", [`${jKey}__reason`]: c.justif ?? "" }));
+            setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
+            clearLocal();
+        } catch { clearLocal(); }
+    };
+
+    const saveManual = async () => {
+        setJudgeFields(p => ({ ...p, [`${jKey}__saving`]: true }));
+        try {
+            await onSave(draft, draftReason || undefined, "new");
+            setJudgeFields(p => ({ ...p, [jKey]: draft, [`${jKey}__reason`]: draftReason, [`${jKey}__draft`]: undefined, [`${jKey}__draftReason`]: undefined }));
+            setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
+            clearLocal();
+        } catch { clearLocal(); }
+    };
 
     return (
         <div style={{ marginBottom: 14 }}>
             <div style={{ fontSize: 9, fontWeight: 600, color: accent, marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: "0.05em", display: "flex", alignItems: "center" }}>{label}{helpKey && <HelpIcon fieldKey={helpKey} />}</div>
-            <JudgeCandidates
-                candidates={candidates}
-                selectedId={selected}
-                onPick={(c) => {
-                    if (c.id === "new") {
-                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; delete n[`${jKey}__saved`]; return n; });
-                        setAdoptedFrom(p => ({ ...p, [jKey]: "new" }));
-                        return;
-                    }
-                    setJudgeFields(p => ({ ...p, [jKey]: c.value ?? "", [`${jKey}__reason`]: c.justif ?? "", [`${jKey}__saved`]: undefined }));
-                    setAdoptedFrom(p => ({ ...p, [jKey]: c.id }));
-                }}
-            />
-            <div style={S.finalLabel}>Texto final del juez (editable):</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-                <input style={S.finalInput} placeholder="Valor final..." value={draft}
-                    onChange={e => setJudgeFields(p => ({ ...p, [jKey]: e.target.value, [`${jKey}__saved`]: undefined }))} />
-                <input style={{ ...S.finalInput, fontSize: 10 }} placeholder="Justificación de tu asignación..." value={draftReason}
-                    onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__reason`]: e.target.value, [`${jKey}__saved`]: undefined }))} />
-                <button disabled={!isDirty}
-                    onClick={async () => {
-                        try {
-                            await onSave(draft, draftReason || undefined, selected ?? "new");
-                            setJudgeFields(p => ({ ...p, [`${jKey}__saved`]: true }));
-                        } catch { }
-                    }}
-                    style={{ ...S.saveBtn, ...(isDirty ? {} : S.saveBtnOff) }}>
-                    Guardar →
-                </button>
-            </div>
-            {((judgeFields[`${jKey}__saved`] === true) || (savedValue !== undefined && judgeFields[jKey] === undefined)) && (
+            {isResolved ? (
                 <div style={S.savedTag}>
-                    ✓ Guardado{sourceLabel(savedSource ?? selected) ? ` · adoptado de ${sourceLabel(savedSource ?? selected)}` : ""}
-                    <button style={S.undoLink} onClick={() => setJudgeFields(p => { const n = { ...p }; delete n[`${jKey}__saved`]; return n; })}>cambiar</button>
+                    <strong>✓ ACEPTADA — {sourceTag(selectedSource)}</strong>
+                    <div>Valor: {displayValue || "—"}</div>
+                    {displayReason && <div style={S.candJustif}>Justificación: "{displayReason}"</div>}
+                    <button style={S.undoLink} onClick={() => {
+                        setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; });
+                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; return n; });
+                    }}>↶ Deshacer</button>
                 </div>
+            ) : isDeciding ? (
+                <div>
+                    <div style={S.finalLabel}>Nuevo valor:</div>
+                    <input style={S.finalInput} value={draft} onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__draft`]: e.target.value }))} />
+                    <div style={S.finalLabel}>Nueva justificación:</div>
+                    <input style={S.finalInput} value={draftReason} onChange={e => setJudgeFields(p => ({ ...p, [`${jKey}__draftReason`]: e.target.value }))} />
+                    <div style={{ display: "flex", gap: 10, marginTop: 6, alignItems: "center" }}>
+                        <button disabled={isSaving || !draft || !draftReason} onClick={saveManual}
+                            style={{ ...S.saveBtn, ...((isSaving || !draft || !draftReason) ? S.saveBtnOff : {}) }}>Guardar →</button>
+                        <button style={S.undoLink} onClick={() => setJudgeFields(p => { const n = { ...p }; delete n[`${jKey}__deciding`]; return n; })}>↶ Deshacer</button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <JudgeCandidates candidates={candidates} onPick={accept} disabled={isSaving} />
+                    <button style={S.rejectAllBtn} disabled={isSaving} onClick={() => setJudgeFields(p => ({ ...p, [`${jKey}__deciding`]: true }))}>
+                        ✕ NINGUNA ES CORRECTA
+                    </button>
+                </>
             )}
         </div>
     );
