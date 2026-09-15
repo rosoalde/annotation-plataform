@@ -1,7 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, distinct
+from sqlalchemy import select, func, distinct, or_
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_db
@@ -159,6 +159,7 @@ async def judge_decide_new(
         Annotation.record_id       == body.record_id,
         Annotation.annotation_type == body.annotation_type,
         Annotation.annotator_id    == current_user.id,
+        or_(Annotation.judge_final_value.isnot(None), Annotation.judge_final_text.isnot(None)),
     )
     if body.pilar:
         q = q.where(Annotation.pilar == body.pilar)
