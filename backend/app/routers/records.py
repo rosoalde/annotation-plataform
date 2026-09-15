@@ -166,9 +166,11 @@ async def list_records(
                     "justicia_equidad",
                     "confianza_institucional",
                 }:
-                    annotator[a.pilar] = a.corrected_value
-                    annotator[f"{a.pilar}_reason"] = a.correction_reason
-                    (corrections.add if a.is_correction else corrections.discard)(a.pilar)
+                    if a.corrected_value is not None:
+                        annotator[a.pilar] = a.corrected_value
+                        (corrections.add if a.is_correction else corrections.discard)(a.pilar)
+                    if a.correction_reason:
+                        annotator[f"{a.pilar}_reason"] = a.correction_reason
 
             elif a.annotation_type == "field":
                 field = a.field_name
@@ -185,9 +187,11 @@ async def list_records(
 
                 if field in field_map:
                     target = field_map[field]
-                    annotator[target] = a.corrected_text
-                    annotator[f"{target}_reason"] = a.correction_reason
-                    (corrections.add if a.is_correction else corrections.discard)(target)
+                    if a.corrected_text is not None:
+                        annotator[target] = a.corrected_text
+                        (corrections.add if a.is_correction else corrections.discard)(target)
+                    if a.correction_reason:
+                        annotator[f"{target}_reason"] = a.correction_reason
         out.append(RecordOut(
             id=rec.id, external_id=rec.external_id, content=rec.content,
             platform=rec.platform, tipo=rec.tipo, fecha=rec.fecha,
