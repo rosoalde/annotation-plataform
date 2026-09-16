@@ -393,6 +393,32 @@ export default function JudgeView() {
     // dejar afuera ningún campo de texto al guardar todo de una vez.
     const TEXT_FIELDS = [...PERTINENCIA_POSTURA_FIELDS, ...GEO_FIELDS];
     const [exporting, setExporting] = useState(false);
+    const [resetting, setResetting] = useState(false);
+
+    // Borra TODAS las decisiones del juez de este proyecto y devuelve los
+    // registros a "annotated". No toca las anotaciones de los anotadores.
+    const handleResetJudge = async () => {
+        if (!window.confirm(
+            "¿Resetear TODAS las decisiones del juez de este proyecto?\n\n" +
+            "Se borrarán todos los valores y justificaciones finales que hayas guardado como juez. " +
+            "Las anotaciones de los anotadores NO se tocan.\n\nEsta acción no se puede deshacer."
+        )) return;
+        setResetting(true);
+        try {
+            await judgeApi.reset(projectId!);
+            // El estado local guarda las decisiones ya tomadas: si no se
+            // limpia, la pantalla seguiría mostrándolas tras el reseteo.
+            setJudgeFields({});
+            setAdoptedFrom({});
+            setCollapsedIds(new Set());
+            await qc.invalidateQueries({ queryKey: ["judge-records", projectId] });
+            showToast("Decisiones del juez eliminadas", true);
+        } catch {
+            showToast("Error al resetear las decisiones", false);
+        } finally {
+            setResetting(false);
+        }
+    };
     const downloadRef = useRef<HTMLAnchorElement>(null);
 
     const handleSaveAll = async (record: typeof data[0]["record"]) => {
@@ -619,6 +645,12 @@ export default function JudgeView() {
                             </button>
                         </div>
                     ))}
+                    <button
+                        disabled={resetting}
+                        onClick={handleResetJudge}
+                        style={{ padding: "3px 8px", borderRadius: "var(--r)", border: "1px solid var(--red)", background: "transparent", color: "var(--red)", fontSize: 10, cursor: resetting ? "default" : "pointer", marginLeft: 8 }}>
+                        {resetting ? "Reseteando…" : "↺ Resetear decisiones"}
+                    </button>
                 </div>
             </div>
             <div style={S.content}>

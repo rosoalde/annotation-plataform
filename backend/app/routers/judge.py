@@ -233,7 +233,7 @@ async def reset_judge_decisions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("judge", "admin")),
 ):
-        """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
+    """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
     from sqlalchemy import update as sa_update, or_ as sa_or, delete as sa_delete
     # Filas creadas por /decide-new: son SOLO decisión del juez (no llevan
     # nada del anotador). Se borran enteras — si solo se anulasen los
