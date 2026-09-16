@@ -899,16 +899,43 @@ export default function JudgeView() {
                             </div>
                             {/* Botón Guardar todo y siguiente */}
                             {(() => {
-                                const hasPending = Object.keys(judgeFields).some(k => k.startsWith(record.id) && !k.endsWith("__saved"));
+                                // "Completo" = cada uno de los 13 campos tiene ya una
+                                // decisión del juez — guardada en el servidor, o
+                                // reflejada localmente justo tras guardarla (para no
+                                // esperar al refetch). Antes se miraba si había claves
+                                // en judgeFields sin sufijo "__saved", pero ese sufijo
+                                // ya no se usa (todo se autoguarda al elegir/escribir),
+                                // así que el aviso se quedaba encendido para siempre en
+                                // cuanto se tocaba un campo, y se apagaba solo al
+                                // recargar — incluso con una decisión recién borrada
+                                // con Deshacer.
+                                const pendingFields: string[] = [];
+                                for (const { key: fieldKey, label } of TEXT_FIELDS) {
+                                    const jKey = `${record.id}__field__${fieldKey}`;
+                                    const hasSaved = fieldAnns.some(a => a.field_name === fieldKey && a.judge_final_text != null);
+                                    if (!hasSaved && judgeFields[jKey] === undefined) pendingFields.push(label);
+                                }
+                                const topicKey = `${record.id}__topic`;
+                                const topicSaved = fieldAnns.some(a => a.field_name === "topic" && a.judge_final_text != null);
+                                if (!topicSaved && judgeFields[topicKey] === undefined) pendingFields.push("Tema / Topic");
+                                const sentKey = `${record.id}__sentiment`;
+                                const sentSaved = sentAnns.some(a => a.judge_final_value != null);
+                                if (!sentSaved && judgeFields[sentKey] === undefined) pendingFields.push("Sentimiento (topic)");
+                                for (const [pilarKey, pilarLabel] of Object.entries(PILAR_LABELS)) {
+                                    const jKey = `${record.id}__${pilarKey}`;
+                                    const hasSaved = pilarAnns.some(a => a.pilar === pilarKey && a.judge_final_value != null);
+                                    if (!hasSaved && judgeFields[jKey] === undefined) pendingFields.push(pilarLabel);
+                                }
+                                const hasPending = pendingFields.length > 0;
                                 return (
                                     <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginTop: 14, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
                                         {hasPending && (
-                                            <span style={{ fontSize: 10, color: "var(--amber)" }}>⚠ Hay cambios sin guardar individualmente</span>
+                                            <span style={{ fontSize: 10, color: "var(--amber)" }}>⚠ Faltan decisiones: {pendingFields.join(", ")}</span>
                                         )}
                                         <button
                                             onClick={() => handleSaveAll(record)}
-                                            style={{ padding: "7px 16px", borderRadius: "var(--r)", background: hasPending ? "var(--accent)" : "var(--border2)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-                                            {hasPending ? "Guardar todo y siguiente →" : "Siguiente →"}
+                                            style={{ padding: "7px 16px", borderRadius: "var(--r)", background: hasPending ? "var(--border2)" : "var(--accent)", color: "#fff", border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+                                            Siguiente →
                                         </button>
                                     </div>
                                 );
