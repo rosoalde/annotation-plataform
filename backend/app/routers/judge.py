@@ -57,6 +57,7 @@ async def judge_records(
             dedup_key = (
                 a.annotator_id, a.annotation_type,
                 a.pilar if a.annotation_type == "pilar" else a.field_name if a.annotation_type == "field" else None,
+                a.judge_final_value is not None or a.judge_final_text is not None,
             )
             latest[dedup_key] = a   # orden ascendente → la última sobrescribe
         anns = list(latest.values())
@@ -195,14 +196,61 @@ async def judge_decide_new(
     await db.commit()
     return {"ok": True, "id": ann.id}
 
+@router.post("/undo")
+async def judge_undo(
+    body: JudgeDecideNewCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("judge", "admin")),
+):
+    """
+    Deshacer: borra la decisión del juez para UN campo concreto.
+    Solo toca filas que son decisión de juez — nunca la corrección original
+    del anotador, aunque el mismo usuario haya hecho las dos.
+    """
+    q = select(Annotation).where(
+        Annotation.record_id       == body.record_id,
+        Annotation.annotation_type == body.annotation_type,
+        Annotation.annotator_id    == current_user.id,
+        or_(Annotation.judge_final_value.isnot(None), Annotation.judge_final_text.isnot(None)),
+    )
+    if body.pilar:
+        q = q.where(Annotation.pilar == body.pilar)
+    if body.field_name:
+        q = q.where(Annotation.field_name == body.field_name)
+    if body.annotation_type == "sentiment":
+        q = q.where(Annotation.pilar == None, Annotation.field_name == None)
+
+    ann = (await db.execute(q)).scalar_one_or_none()
+    if ann:
+        await db.delete(ann)
+        await db.commit()
+    return {"ok": True}
+
+
 @router.delete("/reset/{project_id}")
 async def reset_judge_decisions(
     project_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role("judge", "admin")),
 ):
-    """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
-    from sqlalchemy import update as sa_update, or_ as sa_or
+        """Borra todas las decisiones del juez y devuelve los registros a status=annotated."""
+    from sqlalchemy import update as sa_update, or_ as sa_or, delete as sa_delete
+    # Filas creadas por /decide-new: son SOLO decisión del juez (no llevan
+    # nada del anotador). Se borran enteras — si solo se anulasen los
+    # judge_*, quedarían filas vacías que luego se pintan como un candidato
+    # fantasma "usuario: —" y tapan la anotación real.
+    await db.execute(
+        sa_delete(Annotation).where(
+            Annotation.project_id == project_id,
+            sa_or(Annotation.judge_final_value != None, Annotation.judge_final_text != None, Annotation.judge_reason != None),
+            Annotation.corrected_text == None,
+            Annotation.corrected_value == None,
+            Annotation.corrected_sentiment == None,
+            Annotation.corrected_topic == None,
+        )
+    )
+    # Filas antiguas donde la decisión del juez se escribió ENCIMA de la
+    # anotación de un anotador: solo se anula la parte del juez.
     await db.execute(
         sa_update(Annotation)
         .where(

@@ -79,7 +79,7 @@ function JudgeCandidates({ candidates, onPick, formatValue, disabled }: {
 function TextFieldGroup({
     label, helpKey, accent, jKey, llmCandidate, annotatorCandidates,
     judgeFields, setJudgeFields, adoptedFrom, setAdoptedFrom,
-    savedValue, savedReason, savedSource, onSave,
+    savedValue, savedReason, savedSource, onSave, onUndo,
 }: {
     label: string; helpKey?: string; accent: string; jKey: string;
     llmCandidate: Candidate; annotatorCandidates: Candidate[];
@@ -89,6 +89,7 @@ function TextFieldGroup({
     setAdoptedFrom: React.Dispatch<React.SetStateAction<Record<string, string>>>;
     savedValue?: string; savedReason?: string; savedSource?: string;
     onSave: (finalText: string, reason: string | undefined, source: string) => Promise<unknown>;
+    onUndo: () => Promise<unknown>;
 }) {
     const isDismissed = judgeFields[`${jKey}__dismissed`] === true;
     const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates];
@@ -135,9 +136,13 @@ function TextFieldGroup({
                     <strong>✓ ACEPTADA — {sourceTag(selectedSource)}</strong>
                     <div>Valor: {displayValue || "—"}</div>
                     {displayReason && <div style={S.candJustif}>Justificación: "{displayReason}"</div>}
-                    <button style={S.undoLink} onClick={() => {
+                    <button style={S.undoLink} onClick={async () => {
+                        // Borra también la decisión guardada en el servidor:
+                        // si no, al volver a abrir el registro reaparece la
+                        // opción anterior como si siguiera elegida.
+                        try { await onUndo(); } catch { }
                         setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; });
-                        setJudgeFields(p => ({ ...p, [jKey]: undefined, [`${jKey}__reason`]: undefined, [`${jKey}__dismissed`]: true }));
+                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; delete n[`${jKey}__draft`]; delete n[`${jKey}__draftReason`]; delete n[`${jKey}__deciding`]; n[`${jKey}__dismissed`] = true; return n; });
                     }}>↶ Deshacer</button>
                 </div>
             ) : isDeciding ? (
@@ -169,7 +174,7 @@ function TextFieldGroup({
 function PickerFieldGroup({
     label, helpKey, accent, jKey, llmCandidate, annotatorCandidates, options, formatValue,
     judgeFields, setJudgeFields, adoptedFrom, setAdoptedFrom,
-    savedValue, savedReason, savedSource, onSave,
+    savedValue, savedReason, savedSource, onSave, onUndo,
 }: {
     label: string;
     helpKey?: string;
@@ -187,6 +192,7 @@ function PickerFieldGroup({
     savedReason?: string;
     savedSource?: string;
     onSave: (finalValue: number, reason: string | undefined, source: string) => Promise<unknown>;
+    onUndo: () => Promise<unknown>;
 }) {
     const candidates: Candidate[] = [llmCandidate, ...annotatorCandidates];
     const isDismissed = judgeFields[`${jKey}__dismissed`] === true;
@@ -234,9 +240,13 @@ function PickerFieldGroup({
                     <strong>✓ ACEPTADA — {sourceTag(selectedSource)}</strong>
                     <div>Valor: {formatValue(displayValue)}</div>
                     {displayReason && <div style={S.candJustif}>Justificación: "{displayReason}"</div>}
-                    <button style={S.undoLink} onClick={() => {
+                    <button style={S.undoLink} onClick={async () => {
+                        // Borra también la decisión guardada en el servidor:
+                        // si no, al volver a abrir el registro reaparece la
+                        // opción anterior como si siguiera elegida.
+                        try { await onUndo(); } catch { }
                         setAdoptedFrom(p => { const n = { ...p }; delete n[jKey]; return n; });
-                        setJudgeFields(p => ({ ...p, [jKey]: undefined, [`${jKey}__reason`]: undefined, [`${jKey}__dismissed`]: true }));
+                        setJudgeFields(p => { const n = { ...p }; delete n[jKey]; delete n[`${jKey}__reason`]; delete n[`${jKey}__draft`]; delete n[`${jKey}__draftReason`]; delete n[`${jKey}__deciding`]; n[`${jKey}__dismissed`] = true; return n; });
                     }}>↶ Deshacer</button>
                 </div>
             ) : isDeciding ? (
@@ -333,6 +343,14 @@ export default function JudgeView() {
             showToast("Decisión guardada ✓");
         },
         onError: () => showToast("Error al guardar", false),
+    });
+
+    // Deshacer: borra la decisión del juez de ese campo en el servidor.
+    const judgeUndoMutation = useMutation({
+        mutationFn: (data: { record_id: string; project_id: string; annotation_type: string; pilar?: string; field_name?: string }) =>
+            judgeApi.undo(data),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ["judge-records", projectId] }),
+        onError: () => showToast("Error al deshacer", false),
     });
 
     const PILAR_LABELS: Record<string, string> = {
@@ -746,10 +764,11 @@ export default function JudgeView() {
                                     return (
                                         <TextFieldGroup key={fieldKey} label={label} helpKey={fieldKey} accent="var(--accent2)" jKey={jKey}
                                             llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: llmVal, justif: llmJustif }}
-                                            annotatorCandidates={fieldVals.map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_text, justif: a.correction_reason }))}
+                                            annotatorCandidates={fieldVals.filter(a => a.judge_final_text == null && a.judge_final_value == null).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_text, justif: a.correction_reason }))}
                                             judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
                                             savedValue={savedText} savedReason={savedReason} savedSource={savedSource}
                                             onSave={(finalText, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: finalText, reason, source })}
+                                            onUndo={() => judgeUndoMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey })}
                                         />
                                     );
                                 })}
@@ -764,10 +783,11 @@ export default function JudgeView() {
                                     return (
                                         <TextFieldGroup label="Tema / Topic" helpKey="topic" accent="var(--accent2)" jKey={`${record.id}__topic`}
                                             llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: record.topic_llm, justif: record.justif_topic }}
-                                            annotatorCandidates={sentAnns.filter(a => a.corrected_topic).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_topic, justif: a.topic_reason }))}
+                                            annotatorCandidates={sentAnns.filter(a => a.corrected_topic && a.judge_final_text == null && a.judge_final_value == null).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_topic, justif: a.topic_reason }))}
                                             judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
                                             savedValue={savedTopic ?? undefined} savedReason={savedTopicReason} savedSource={savedTopicSource}
                                             onSave={(finalText, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic", final_text: finalText, reason, source })}
+                                            onUndo={() => judgeUndoMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: "topic" })}
                                         />
                                     );
                                 })()}
@@ -782,10 +802,11 @@ export default function JudgeView() {
                                         <PickerFieldGroup label="Sentimiento (topic)" helpKey="sentiment" accent="var(--accent2)" jKey={`${record.id}__sentiment`}
                                             options={SENT_OPTS} formatValue={(v) => sentLabel(v as number)}
                                             llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: record.sentiment_llm, justif: record.justif_sentimiento }}
-                                            annotatorCandidates={sentAnns.map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_sentiment, justif: a.correction_reason }))}
+                                            annotatorCandidates={sentAnns.filter(a => a.judge_final_text == null && a.judge_final_value == null).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_sentiment, justif: a.correction_reason }))}
                                             judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
                                             savedValue={savedSentAnn?.judge_final_value ?? undefined} savedReason={savedSentAnn?.judge_reason ?? undefined} savedSource={savedSentAnn?.judge_source ?? undefined}
                                             onSave={(finalValue, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment", final_value: finalValue, reason, source })}
+                                            onUndo={() => judgeUndoMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "sentiment" })}
                                         />
                                     );
                                 })()}
@@ -809,10 +830,11 @@ export default function JudgeView() {
                                                 <PickerFieldGroup key={pilarKey} label={pilarLabel} helpKey={pilarKey} accent="var(--teal)" jKey={jKey}
                                                     options={PILAR_OPTS.map(o => ({ v: o.v, label: o.l }))} formatValue={(v) => v === undefined ? "—" : v === 2 ? "N/A" : String(v)}
                                                     llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: llmVal, justif }}
-                                                    annotatorCandidates={annotatorVals.map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_value, justif: a.correction_reason }))}
+                                                    annotatorCandidates={annotatorVals.filter(a => a.judge_final_text == null && a.judge_final_value == null).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_value, justif: a.correction_reason }))}
                                                     judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
                                                     savedValue={savedPilarAnn?.judge_final_value ?? undefined} savedReason={savedPilarAnn?.judge_reason ?? undefined} savedSource={savedPilarAnn?.judge_source ?? undefined}
                                                     onSave={(finalValue, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey, final_value: finalValue, reason, source })}
+                                                    onUndo={() => judgeUndoMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "pilar", pilar: pilarKey })}
                                                 />
                                             );
                                         })}
@@ -834,10 +856,11 @@ export default function JudgeView() {
                                     return (
                                         <TextFieldGroup key={fieldKey} label={label} helpKey={fieldKey} accent="var(--purple)" jKey={jKey}
                                             llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: llmVal, justif: llmJustif }}
-                                            annotatorCandidates={fieldVals.map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_text, justif: a.correction_reason }))}
+                                            annotatorCandidates={fieldVals.filter(a => a.judge_final_text == null && a.judge_final_value == null).map(a => ({ id: a.annotator, icon: "👤", label: `${a.annotator}${a.reviewer_decision === "reject" ? " ✗" : a.reviewer_decision === "accept" ? " ✓" : ""}`, value: a.corrected_text, justif: a.correction_reason }))}
                                             judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
                                             savedValue={savedText} savedReason={savedReason} savedSource={savedSource}
                                             onSave={(finalText, reason, source) => judgeDecideNewMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey, final_text: finalText, reason, source })}
+                                            onUndo={() => judgeUndoMutation.mutateAsync({ record_id: record.id, project_id: projectId!, annotation_type: "field", field_name: fieldKey })}
                                         />
                                     );
                                 })}
