@@ -758,7 +758,7 @@ export default function JudgeView() {
                             {/* ── Cabecera del record ── */}
                             <div style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "var(--muted)", marginBottom: 4 }}>
                                 [{record.platform ?? "?"} · {record.tipo ?? "?"} · {record.fecha ?? "?"}]
-                                {record.url_post && <> · <a href={record.url_post} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontSize: 9 }}>🔗 ver post</a></>}
+                                {record.url_post && <> · <a href={record.url_post} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontSize: 9 }}>🔗 Ver post original en {rec.platform || "la plataforma"} ↗</a></>}
                             </div>
 
                             {/* Contexto padre si existe */}
@@ -775,12 +775,12 @@ export default function JudgeView() {
                             </div>
 
                             {/* Metadatos del record */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, fontSize: 10, color: "var(--muted)", marginBottom: 10 }}>
+                            {/* <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, fontSize: 10, color: "var(--muted)", marginBottom: 10 }}>
                                 {record.lang && <span>🌐 Idioma LLM: <strong style={{ color: "var(--text)" }}>{record.lang}</strong>{record.justif_lang && <em> — {record.justif_lang}</em>}</span>}
                                 {record.world_country && <span>🌍 País LLM: <strong style={{ color: "var(--text)" }}>{[record.world_city, record.world_region, record.world_country].filter(Boolean).join(", ")}</strong>{record.justif_pais && <em> — {record.justif_pais}</em>}</span>}
                                 {record.pertinencia && <span>📌 Pertinencia LLM: <strong style={{ color: "var(--text)" }}>{record.pertinencia}</strong>{record.justif_pertinencia && <em> — {record.justif_pertinencia}</em>}</span>}
                                 {record.postura && <span>🎯 Postura LLM: <strong style={{ color: "var(--text)" }}>{record.postura}</strong>{record.justif_postura && <em> — {record.justif_postura}</em>}</span>}
-                            </div>
+                            </div> */}
 
                             {/* ── PERTINENCIA Y POSTURA ── */}
                             <div style={{ borderTop: "1px solid var(--border)", paddingTop: 10, marginBottom: 10 }}>
