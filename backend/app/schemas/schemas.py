@@ -396,7 +396,7 @@ class JudgeDecideCreate(BaseModel):
 
 class JudgeDecideNewCreate(BaseModel):
     """Decisión del juez cuando NO existe ninguna fila previa (ningún anotador corrigió ese pilar/campo)."""
-    record_id: str
+    record_id: Optional[str] = None   # None → decisión a nivel de proyecto (p. ej. descripción del tema)
     project_id: str
     annotation_type: str          # "pilar" | "field"
     pilar: Optional[str] = None

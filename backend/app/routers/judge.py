@@ -288,12 +288,34 @@ async def export_judged(
     kw_result = await db.execute(select(Keyword).where(Keyword.project_id == project_id))
     keywords_list = kw_result.scalars().all()
 
+    ann_result = await db.execute(
+        select(Annotation)
+        .options(selectinload(Annotation.annotator))
+        .where(Annotation.project_id == project_id)
+    )
+    all_anns = ann_result.scalars().all()
+
+    topic_desc_anns = [a for a in all_anns if a.record_id is None and a.annotation_type == "field" and a.field_name == "topic_desc"]
+    topic_desc_annotator_rows = [a for a in topic_desc_anns if a.judge_final_text is None]
+    topic_desc_judge_ann = next((a for a in reversed(topic_desc_anns) if a.judge_final_text is not None), None)
+    topic_desc_latest_by_annotator: dict = {}
+    for a in topic_desc_annotator_rows:
+        topic_desc_latest_by_annotator[a.annotator_id] = a
+
     project_meta = {
         "project_id":        project_id,
         "project_name":      project.name if project else None,
         "project_tema":      project.tema if project else None,
         "project_desc_tema": project.desc_tema if project else None,
         "project_scope":     project.population_scope if project else None,
+        "project_desc_tema_annotators": [
+            {"annotator": a.annotator.username if a.annotator else "?",
+             "value": a.corrected_text, "reason": a.correction_reason}
+            for a in topic_desc_latest_by_annotator.values()
+        ],
+        "project_desc_tema_judge_value":  topic_desc_judge_ann.judge_final_text if topic_desc_judge_ann else None,
+        "project_desc_tema_judge_reason": topic_desc_judge_ann.judge_reason if topic_desc_judge_ann else None,
+        "project_desc_tema_judge_source": topic_desc_judge_ann.judge_source if topic_desc_judge_ann else None,
         # "keywords_accepted": [k.keyword for k in keywords_list if k.accepted is True],
         # "keywords_rejected": [k.keyword for k in keywords_list if k.accepted is False],
         # "keywords_pending":  [k.keyword for k in keywords_list if k.accepted is None],
@@ -302,12 +324,12 @@ async def export_judged(
         # "keywords_judge_pending":  [k.keyword for k in keywords_list if k.reviewer_decision is None],
     }
 
-    ann_result = await db.execute(
-        select(Annotation)
-        .options(selectinload(Annotation.annotator))
-        .where(Annotation.project_id == project_id)
-    )
-    all_anns = ann_result.scalars().all()
+    # ann_result = await db.execute(
+    #     select(Annotation)
+    #     .options(selectinload(Annotation.annotator))
+    #     .where(Annotation.project_id == project_id)
+    # )
+    # all_anns = ann_result.scalars().all()
 
     # Indexar anotaciones por record
     from collections import defaultdict

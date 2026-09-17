@@ -347,7 +347,7 @@ export default function JudgeView() {
 
     // Deshacer: borra la decisión del juez de ese campo en el servidor.
     const judgeUndoMutation = useMutation({
-        mutationFn: (data: { record_id: string; project_id: string; annotation_type: string; pilar?: string; field_name?: string }) =>
+        mutationFn: (data: { record_id?: string; project_id: string; annotation_type: string; pilar?: string; field_name?: string }) =>
             judgeApi.undo(data),
         onSuccess: () => qc.invalidateQueries({ queryKey: ["judge-records", projectId] }),
         onError: () => showToast("Error al deshacer", false),
@@ -663,34 +663,19 @@ export default function JudgeView() {
                             <div><span style={{ color: "var(--muted)" }}>Ámbito: </span><strong style={{ color: "var(--text)" }}>{project.population_scope || "—"}</strong></div>
                         </div>
                         <div style={{ marginTop: 8 }}>
-                            <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 4 }}>Descripción del tema (editable por el juez):</div>
-                            {editingDesc ? (
-                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                                    <textarea autoFocus rows={3}
-                                        style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: "var(--r)", color: "var(--text)", padding: "7px 10px", fontSize: 12, width: "100%", resize: "vertical" as const, fontFamily: "inherit" }}
-                                        value={descDraft}
-                                        onChange={e => setDescDraft(e.target.value)} />
-                                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                                        <button disabled={updateProjectMutation.isPending}
-                                            onClick={() => updateProjectMutation.mutate(descDraft.trim())}
-                                            style={{ padding: "4px 12px", borderRadius: "var(--r)", background: "var(--accent)", color: "#fff", border: "none", fontSize: 11, cursor: "pointer" }}>
-                                            {updateProjectMutation.isPending ? "Guardando..." : "Guardar"}
-                                        </button>
-                                        <button onClick={() => setEditingDesc(false)}
-                                            style={{ padding: "4px 12px", borderRadius: "var(--r)", border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", fontSize: 11, cursor: "pointer" }}>
-                                            Cancelar
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                    <span style={{ flex: 1, fontSize: 12, color: "var(--text)", lineHeight: 1.5 }}>
-                                        {project.desc_tema || <em style={{ color: "var(--muted)" }}>Sin descripción</em>}
-                                    </span>
-                                    <button onClick={() => { setDescDraft(project.desc_tema ?? ""); setEditingDesc(true); }}
-                                        style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: 13, padding: "0 2px", opacity: 0.6 }}>✎</button>
-                                </div>
-                            )}
+                            {(() => {
+                                const annotatorCandidates = (project.topic_desc_annotators ?? []).map(a => ({ id: a.annotator, icon: "👤", label: a.annotator, value: a.corrected_text, justif: a.correction_reason }));
+                                return (
+                                    <TextFieldGroup label="Descripción del tema" accent="var(--amber)" jKey="project__topic_desc"
+                                        llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: project.desc_tema }}
+                                        annotatorCandidates={annotatorCandidates}
+                                        judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}
+                                        savedValue={project.topic_desc_judge_value} savedReason={project.topic_desc_judge_reason} savedSource={project.topic_desc_judge_source}
+                                        onSave={(finalText, reason, source) => judgeDecideNewMutation.mutateAsync({ project_id: projectId!, annotation_type: "field", field_name: "topic_desc", final_text: finalText, reason, source })}
+                                        onUndo={() => judgeUndoMutation.mutateAsync({ project_id: projectId!, annotation_type: "field", field_name: "topic_desc" })}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
                 )}

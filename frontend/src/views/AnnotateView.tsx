@@ -729,7 +729,7 @@ export default function AnnotateView() {
             </div>
 
             <div style={S.content}>
-                <ProjectContextBar projectId={projectId} />
+                <ProjectContextBar projectId={projectId} mode="annotator" />
 
                 <div style={S.progressCard}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
