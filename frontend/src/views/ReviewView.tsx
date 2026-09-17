@@ -76,7 +76,7 @@ export default function ReviewView() {
                       </span>
                       {first.record_url_post && (
                         <a href={first.record_url_post} target="_blank" rel="noopener noreferrer"
-                          style={{ fontSize: 10, color: "var(--teal)", textDecoration: "none" }}>🔗 ver post original en {rec.platform || "la plataforma"} ↗</a>
+                          style={{ fontSize: 10, color: "var(--teal)", textDecoration: "none" }}>🔗 Ver post original en {first.record_platform || "la plataforma"} ↗</a>
                       )}
                     </div>
                     {first.record_cuerpo_padre && (

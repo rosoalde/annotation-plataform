@@ -758,7 +758,7 @@ export default function JudgeView() {
                             {/* ── Cabecera del record ── */}
                             <div style={{ fontSize: 9, textTransform: "uppercase" as const, letterSpacing: "0.1em", color: "var(--muted)", marginBottom: 4 }}>
                                 [{record.platform ?? "?"} · {record.tipo ?? "?"} · {record.fecha ?? "?"}]
-                                {record.url_post && <> · <a href={record.url_post} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontSize: 9 }}>🔗 Ver post original en {rec.platform || "la plataforma"} ↗</a></>}
+                                {record.url_post && <> · <a href={record.url_post} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontSize: 9 }}>🔗 Ver post original en {record.platform || "la plataforma"} ↗</a></>}
                             </div>
 
                             {/* Contexto padre si existe */}
