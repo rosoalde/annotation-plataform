@@ -86,6 +86,11 @@ class ProjectOut(BaseModel):
     output_folder: Optional[str]
     created_at: datetime
     keywords: List[Any] = []
+    topic_desc_annotators: List[Any] = []
+    topic_desc_judge_id: Optional[str] = None
+    topic_desc_judge_value: Optional[str] = None
+    topic_desc_judge_reason: Optional[str] = None
+    topic_desc_judge_source: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -285,7 +290,7 @@ class KeywordDecisionCreate(BaseModel):
 
 class AnnotationResponse(BaseModel):
     id: str
-    record_id: str
+    record_id: Optional[str] = None
     annotation_type: str
     is_correction: bool
     created_at: datetime
@@ -303,7 +308,12 @@ class FieldAnnotationCreate(BaseModel):
     is_correction: bool
     correction_reason: Optional[str] = None
 
-
+class TopicDescProposalCreate(BaseModel):
+    project_id: Optional[str] = None   # ya viene en la URL; se acepta también aquí sin usarlo
+    corrected_text: str
+    is_correction: bool
+    correction_reason: Optional[str] = None
+    
 class CompleteRecordCreate(BaseModel):
     # Marca que ESTE anotador ha terminado ESTE registro (botón "Guardar y
     # siguiente"). Es lo único que debe sacar el registro de su cola de

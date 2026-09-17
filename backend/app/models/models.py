@@ -204,7 +204,7 @@ class Annotation(Base):
     __tablename__ = "annotations"
 
     id              = Column(String, primary_key=True, default=_uuid)
-    record_id       = Column(String, ForeignKey("records.id"), nullable=False)
+    record_id       = Column(String, ForeignKey("records.id"), nullable=True)
     project_id      = Column(String, ForeignKey("projects.id"), nullable=False)
     annotator_id    = Column(String, ForeignKey("users.id"),    nullable=False)
     annotation_type = Column(String(20), nullable=False)   # sentiment | pilar | keyword

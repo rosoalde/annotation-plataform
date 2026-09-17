@@ -179,6 +179,7 @@ async def save_topic_desc(
     return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
                                is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
 
+@router.post("/{project_id}/annotations/complete", response_model=AnnotationResponse)
 async def complete_record(
     project_id: str,
     body: CompleteRecordCreate,
