@@ -56,6 +56,12 @@ export interface Project {
     output_folder?: string;
     created_at: string;
     keywords?: KeywordItem[];
+    topic_desc_annotators?: Array<{ id: string; annotator: string; corrected_text?: string; correction_reason?: string }>;
+    topic_desc_judge_id?: string;
+    topic_desc_judge_value?: string;
+    topic_desc_judge_reason?: string;
+    topic_desc_judge_source?: string;
+
 }
 
 // ── Records ────────────────────────────────────────────────────────────────

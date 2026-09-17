@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 
 from backend.app.core.database import get_db
 from backend.app.core.security import get_current_user, require_role
@@ -38,10 +39,36 @@ async def get_project(
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(404, "Project not found")
+
+    ann_r = await db.execute(
+        select(Annotation).options(selectinload(Annotation.annotator)).where(
+            Annotation.project_id == project_id,
+            Annotation.record_id.is_(None),
+            Annotation.annotation_type == "field",
+            Annotation.field_name == "topic_desc",
+        ).order_by(Annotation.created_at.asc())
+    )
+    topic_anns = ann_r.scalars().all()
+    real_anns  = [a for a in topic_anns if a.judge_final_text is None]
+    judge_ann  = next((a for a in reversed(topic_anns) if a.judge_final_text is not None), None)
+    latest_by_annotator: dict = {}
+    for a in real_anns:
+        latest_by_annotator[a.annotator_id] = a
+    topic_desc_annotators = [
+        {"id": a.id, "annotator": a.annotator.username if a.annotator else "?",
+         "corrected_text": a.corrected_text, "correction_reason": a.correction_reason}
+        for a in latest_by_annotator.values()
+    ]
+
     return ProjectOut(
         id=project.id, name=project.name, tema=project.tema,
         desc_tema=project.desc_tema, population_scope=project.population_scope,
-        output_folder=project.output_folder, created_at=project.created_at, keywords=[]
+        output_folder=project.output_folder, created_at=project.created_at, keywords=[],
+        topic_desc_annotators=topic_desc_annotators,
+        topic_desc_judge_id=judge_ann.id if judge_ann else None,
+        topic_desc_judge_value=judge_ann.judge_final_text if judge_ann else None,
+        topic_desc_judge_reason=judge_ann.judge_reason if judge_ann else None,
+        topic_desc_judge_source=judge_ann.judge_source if judge_ann else None,
     )
 
 

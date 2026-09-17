@@ -125,6 +125,8 @@ export const annotationsApi = {
     complete: (projectId: string, recordId: string) =>
         http.post<AnnotationResponse>(`/projects/${projectId}/annotations/complete`, { record_id: recordId }).then((r) => r.data),
 
+    saveTopicDesc: (projectId: string, data: { corrected_text: string; is_correction: boolean; correction_reason?: string }) =>
+        http.post<AnnotationResponse>(`/projects/${projectId}/annotations/topic-desc`, { project_id: projectId, ...data }).then((r) => r.data),
 
     decideKeyword: (projectId: string, keywordId: string, data: KeywordDecisionCreate) =>
         http.patch(`/projects/${projectId}/keywords/${keywordId}`, data).then((r) => r.data),

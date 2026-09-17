@@ -16,7 +16,7 @@ from backend.app.core.security import get_current_user, require_role
 from backend.app.models.models import User, Record, Annotation, RecordLock, Keyword
 from backend.app.schemas.schemas import (
     SentimentAnnotationCreate, PilarAnnotationCreate, KeywordDecisionCreate,
-    AnnotationResponse, FieldAnnotationCreate, CompleteRecordCreate
+    AnnotationResponse, FieldAnnotationCreate, CompleteRecordCreate, TopicDescProposalCreate
 )
 
 router = APIRouter(tags=["annotations"])
@@ -155,7 +155,30 @@ async def save_field(
                                is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
 
 
-@router.post("/{project_id}/annotations/complete", response_model=AnnotationResponse)
+@router.post("/{project_id}/annotations/topic-desc", response_model=AnnotationResponse)
+async def save_topic_desc(
+    project_id: str,
+    body: TopicDescProposalCreate,
+    db: AsyncSession   = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Propuesta de un anotador para la descripción del tema. A nivel de
+    PROYECTO, no de un record concreto (record_id queda NULL) — por eso no
+    llama a _release_lock/_update_record_status, que son por-record.
+    """
+    ann = Annotation(
+        record_id=None, project_id=project_id, annotator_id=current_user.id,
+        annotation_type="field", field_name="topic_desc",
+        corrected_text=body.corrected_text,
+        is_correction=body.is_correction, correction_reason=body.correction_reason,
+    )
+    db.add(ann)
+    await db.commit()
+    await db.refresh(ann)
+    return AnnotationResponse(id=ann.id, record_id=ann.record_id, annotation_type=ann.annotation_type,
+                               is_correction=ann.is_correction, created_at=ann.created_at, version=ann.version)
+
 async def complete_record(
     project_id: str,
     body: CompleteRecordCreate,
