@@ -98,7 +98,7 @@ function TextFieldGroup({
     const displayReason = isDismissed ? undefined : ((judgeFields[`${jKey}__reason`] as string) ?? savedReason);
     const isDeciding = judgeFields[`${jKey}__deciding`] === true;
     const isSaving = judgeFields[`${jKey}__saving`] === true;
-    const isResolved = !isDeciding && selectedSource !== undefined && displayValue !== undefined;
+    const isResolved = !isDeciding && selectedSource != null && displayValue != null;
     const draft = (judgeFields[`${jKey}__draft`] as string) ?? "";
     const draftReason = (judgeFields[`${jKey}__draftReason`] as string) ?? "";
 
@@ -201,7 +201,7 @@ function PickerFieldGroup({
     const displayReason = isDismissed ? undefined : ((judgeFields[`${jKey}__reason`] as string) ?? savedReason);
     const isDeciding = judgeFields[`${jKey}__deciding`] === true;
     const isSaving = judgeFields[`${jKey}__saving`] === true;
-    const isResolved = !isDeciding && selectedSource !== undefined && displayValue !== undefined;
+    const isResolved = !isDeciding && selectedSource != null && displayValue != null;
     const draft = judgeFields[`${jKey}__draft`] as number | undefined;
     const draftReason = (judgeFields[`${jKey}__draftReason`] as string) ?? "";
 
