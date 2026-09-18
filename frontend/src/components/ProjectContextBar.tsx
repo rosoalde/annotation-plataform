@@ -15,6 +15,7 @@ export default function ProjectContextBar({ projectId, mode = "admin" }: { proje
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState("");
     const [rejecting, setRejecting] = useState(false);
+    const [changingProposal, setChangingProposal] = useState(false);
     const [newVal, setNewVal] = useState("");
     const [newReason, setNewReason] = useState("");
 

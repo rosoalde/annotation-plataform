@@ -340,6 +340,7 @@ export default function JudgeView() {
         mutationFn: (data: Parameters<typeof judgeApi.decideNew>[0]) => judgeApi.decideNew(data),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["judge-records", projectId] });
+            qc.invalidateQueries({ queryKey: ["project", projectId] });
             showToast("Decisión guardada ✓");
         },
         onError: () => showToast("Error al guardar", false),
@@ -349,7 +350,10 @@ export default function JudgeView() {
     const judgeUndoMutation = useMutation({
         mutationFn: (data: { record_id?: string; project_id: string; annotation_type: string; pilar?: string; field_name?: string }) =>
             judgeApi.undo(data),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ["judge-records", projectId] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ["judge-records", projectId] });
+            qc.invalidateQueries({ queryKey: ["project", projectId] });
+        },
         onError: () => showToast("Error al deshacer", false),
     });
 
