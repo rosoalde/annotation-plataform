@@ -666,7 +666,7 @@ export default function JudgeView() {
                             {(() => {
                                 const annotatorCandidates = (project.topic_desc_annotators ?? []).map(a => ({ id: a.annotator, icon: "👤", label: a.annotator, value: a.corrected_text, justif: a.correction_reason }));
                                 return (
-                                    <TextFieldGroup label="Descripción del tema" accent="var(--amber)" jKey="project__topic_desc"
+                                    <TextFieldGroup label="Descripción del tema" accent="var(--amber)" jKey={`${projectId}__topic_desc`}
                                         llmCandidate={{ id: "llm", icon: "🤖", label: "LLM", value: project.desc_tema }}
                                         annotatorCandidates={annotatorCandidates}
                                         judgeFields={judgeFields} setJudgeFields={setJudgeFields} adoptedFrom={adoptedFrom} setAdoptedFrom={setAdoptedFrom}

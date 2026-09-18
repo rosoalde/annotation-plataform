@@ -156,6 +156,9 @@ async def judge_decide_new(
     Upsert: si ya existe una anotación del juez para este record+tipo+campo,
     la actualiza. Si no, la crea. Evita duplicados en ediciones sucesivas.
     """
+    if body.final_value is None and not (body.final_text or "").strip():
+        raise HTTPException(400, "La decisión del juez necesita un valor")
+
     q = select(Annotation).where(
         Annotation.record_id       == body.record_id,
         Annotation.annotation_type == body.annotation_type,
