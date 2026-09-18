@@ -41,6 +41,7 @@ export default function ProjectContextBar({ projectId, mode = "admin" }: { proje
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ["project", projectId] });
             setRejecting(false);
+            setChangingProposal(false);
         },
     });
 
@@ -73,10 +74,14 @@ export default function ProjectContextBar({ projectId, mode = "admin" }: { proje
                         <div style={{ ...S.value, marginBottom: 4 }}>
                             🤖 LLM: {project.desc_tema || <em style={{ opacity: 0.5 }}>Sin descripción</em>}
                         </div>
-                        {myProposal ? (
+                        {myProposal && !changingProposal ? (
                             <div style={{ fontSize: 11, color: "var(--green)" }}>
                                 ✓ Tu propuesta: {myProposal.corrected_text}
                                 {myProposal.correction_reason && <em style={{ color: "var(--muted)" }}> — "{myProposal.correction_reason}"</em>}
+                                <button onClick={() => setChangingProposal(true)}
+                                    style={{ marginLeft: 8, background: "transparent", border: "none", color: "var(--muted)", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>
+                                    ↶ Deshacer
+                                </button>
                             </div>
                         ) : rejecting ? (
                             <div style={{ display: "flex", flexDirection: "column" as const, gap: 5, maxWidth: 480 }}>
@@ -92,13 +97,13 @@ export default function ProjectContextBar({ projectId, mode = "admin" }: { proje
                                         style={{ padding: "4px 10px", borderRadius: "var(--r)", border: "none", fontSize: 11, fontWeight: 500, cursor: "pointer", background: "var(--accent)", color: "#fff" }}>
                                         Guardar →
                                     </button>
-                                    <button onClick={() => setRejecting(false)} style={{ padding: "4px 10px", borderRadius: "var(--r)", border: "1px solid var(--border)", fontSize: 11, background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
+                                    <button onClick={() => { setRejecting(false); setChangingProposal(false); }} style={{ padding: "4px 10px", borderRadius: "var(--r)", border: "1px solid var(--border)", fontSize: 11, background: "transparent", color: "var(--muted)", cursor: "pointer" }}>
                                         Cancelar
                                     </button>
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ display: "flex", gap: 6 }}>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                                 <button disabled={proposeMutation.isPending}
                                     onClick={() => proposeMutation.mutate({ corrected_text: project.desc_tema, is_correction: false })}
                                     style={{ padding: "4px 10px", borderRadius: "var(--r)", border: "1.5px solid var(--green)", fontSize: 10, fontWeight: 600, cursor: "pointer", background: "rgba(46,194,126,0.1)", color: "var(--green)" }}>
@@ -108,6 +113,12 @@ export default function ProjectContextBar({ projectId, mode = "admin" }: { proje
                                     style={{ padding: "4px 10px", borderRadius: "var(--r)", border: "1.5px solid var(--red)", fontSize: 10, fontWeight: 600, cursor: "pointer", background: "rgba(224,82,82,0.1)", color: "var(--red)" }}>
                                     ✕ NO CONFIRMO / NO ESTOY DE ACUERDO
                                 </button>
+                                {changingProposal && (
+                                    <button onClick={() => setChangingProposal(false)}
+                                        style={{ background: "transparent", border: "none", color: "var(--muted)", fontSize: 10, cursor: "pointer", textDecoration: "underline" }}>
+                                        ‹ Cancelar
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

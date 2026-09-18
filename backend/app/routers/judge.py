@@ -223,9 +223,10 @@ async def judge_undo(
     if body.annotation_type == "sentiment":
         q = q.where(Annotation.pilar == None, Annotation.field_name == None)
 
-    ann = (await db.execute(q)).scalar_one_or_none()
-    if ann:
+    anns = (await db.execute(q)).scalars().all()
+    for ann in anns:
         await db.delete(ann)
+    if anns:
         await db.commit()
     return {"ok": True}
 
